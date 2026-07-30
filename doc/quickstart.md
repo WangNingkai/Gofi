@@ -72,3 +72,5 @@ docker run --rm -p 8080:8080 -v gofi-data:/app gofi:local
 ```bash
 make clean
 ```
+
+升级现有实例前请先阅读[升级、备份与恢复](./upgrade.md)，公网部署同时核对[安全部署检查](./security.md)。

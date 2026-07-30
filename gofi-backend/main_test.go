@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"runtime"
 	"testing"
 
+	"gofi/application"
 	"gofi/controller"
 	"gofi/db"
 	"gofi/env"
@@ -163,6 +165,62 @@ func TestCoreHTTPFlow(t *testing.T) {
 		require.Equal(t, http.StatusOK, status)
 		_, err = os.Stat(filepath.Join(storageDir, "upload.txt"))
 		require.ErrorIs(t, err, os.ErrNotExist)
+	})
+
+	t.Run("目录与文件操作闭环", func(t *testing.T) {
+		status, _ := performRequest(t, app, http.MethodPost, "/api/directory", map[string]interface{}{
+			"path": "/", "name": "managed",
+		}, token)
+		require.Equal(t, http.StatusOK, status)
+		require.NoError(t, os.WriteFile(filepath.Join(storageDir, "managed", "source.txt"), []byte("managed"), 0o600))
+
+		status, _ = performRequest(t, app, http.MethodPost, "/api/file/copy", map[string]interface{}{
+			"source": "/managed/source.txt", "destination": "/managed/copy.txt",
+		}, token)
+		require.Equal(t, http.StatusOK, status)
+		status, _ = performRequest(t, app, http.MethodPost, "/api/file/rename", map[string]interface{}{
+			"path": "/managed/copy.txt", "name": "renamed.txt",
+		}, token)
+		require.Equal(t, http.StatusOK, status)
+		status, _ = performRequest(t, app, http.MethodPost, "/api/file/move", map[string]interface{}{
+			"source": "/managed/renamed.txt", "destination": "/moved-managed.txt",
+		}, token)
+		require.Equal(t, http.StatusOK, status)
+
+		status, response := performRequest(t, app, http.MethodPost, "/api/file/batch", []map[string]interface{}{
+			{"operation": "delete", "source": "/moved-managed.txt"},
+			{"operation": "delete", "source": "/does-not-exist"},
+		}, token)
+		require.Equal(t, http.StatusOK, status)
+		var results []application.BatchFileResult
+		require.NoError(t, json.Unmarshal(response.Data, &results))
+		require.True(t, results[0].Success)
+		require.False(t, results[1].Success)
+	})
+
+	t.Run("索引搜索与可撤销分享", func(t *testing.T) {
+		status, _ := performRequest(t, app, http.MethodPost, "/api/search/rebuild", nil, token)
+		require.Equal(t, http.StatusOK, status)
+		status, response := performRequest(t, app, http.MethodGet, "/api/search?q=hello", nil, token)
+		require.Equal(t, http.StatusOK, status)
+		var searchResults []db.FileIndex
+		require.NoError(t, json.Unmarshal(response.Data, &searchResults))
+		require.NotEmpty(t, searchResults)
+
+		status, response = performRequest(t, app, http.MethodPost, "/api/share", map[string]interface{}{
+			"path": "/hello.txt", "expiresInHours": 24,
+		}, token)
+		require.Equal(t, http.StatusOK, status)
+		var share application.CreatedShare
+		require.NoError(t, json.Unmarshal(response.Data, &share))
+		require.NotEmpty(t, share.Token)
+
+		status, _ = performRequest(t, app, http.MethodGet, "/api/shared/"+share.Token, nil, "")
+		require.Equal(t, http.StatusOK, status)
+		status, _ = performRequest(t, app, http.MethodDelete, fmt.Sprintf("/api/share/%d", share.ID), nil, token)
+		require.Equal(t, http.StatusOK, status)
+		status, _ = performRequest(t, app, http.MethodGet, "/api/shared/"+share.Token, nil, "")
+		require.Equal(t, http.StatusNotFound, status)
 	})
 
 	t.Run("管理员可以显式开放访客目录权限", func(t *testing.T) {

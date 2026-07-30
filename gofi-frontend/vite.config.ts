@@ -18,6 +18,17 @@ export default defineConfig(({ mode }) => {
             // 在开发环境下也支持演示模式
             'import.meta.env.VITE_IS_PREVIEW_MODE': JSON.stringify(isDemoMode ? 'true' : 'false'),
         },
+        build: {
+            rollupOptions: {
+                output: {
+                    manualChunks: {
+                        'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+                        'vendor-i18n': ['i18next', 'react-i18next'],
+                        'vendor-data': ['axios', 'swr', 'jotai'],
+                    },
+                },
+            },
+        },
         server: {
             port: 3000,
             host: true,

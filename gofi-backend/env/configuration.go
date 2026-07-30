@@ -23,6 +23,7 @@ type Configuration struct {
 	MaxRequestsPerMinute int
 	AllowedOrigins       []string
 	TrustedProxies       []string
+	EnableIndex          bool
 
 	// 日志配置
 	LogLevel    string
@@ -50,6 +51,7 @@ func GetConfiguration() *Configuration {
 			MaxRequestsPerMinute: getEnvIntOrDefault("GOFI_MAX_REQUESTS_PER_MINUTE", 100),
 			AllowedOrigins:       getEnvList("GOFI_ALLOWED_ORIGINS"),
 			TrustedProxies:       getEnvList("GOFI_TRUSTED_PROXIES"),
+			EnableIndex:          getEnvBoolOrDefault("GOFI_ENABLE_INDEX", true),
 
 			// 日志配置
 			LogLevel:    getEnvOrDefault("GOFI_LOG_LEVEL", "info"),

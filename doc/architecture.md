@@ -48,6 +48,13 @@ gofi-backend/
   db/            显式数据库打开、迁移和关闭
 ```
 
+M2/M3 在相同边界中增加：
+
+- `ResumableUploadService`：磁盘会话、分片校验、完成合并、取消和过期清理。
+- `IndexService`：从本地存储生成可重建索引，文件变更后按路径前缀增量替换。
+- `ShareService`：创建、解析、列出和撤销范围受限的分享令牌。
+- `FileIndexRepository`、`ShareRepository`：只负责 SQLite 持久化，不读取用户文件。
+
 ### HTTP 层
 
 - 解析和校验输入。
@@ -152,6 +159,7 @@ gofi-frontend/src/
 ## 数据与迁移
 
 - SQLite 在应用启动流程中显式打开并执行可重复 schema 同步，包初始化不创建文件或修改数据。
+- `schema_migration` 记录当前 schema 版本；高于程序支持版本的数据库会拒绝启动。
 - 密码散列升级采用登录时迁移或一次性迁移策略，不能让现有用户静默失效。
 - 配置读取顺序和默认值必须文档化。
 - 存储目录中的用户文件永远不参与应用迁移或自动删除。

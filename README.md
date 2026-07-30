@@ -15,6 +15,8 @@ Gofi is a modern, open-source web file indexer and manager, featuring a fully re
 - **Security & Auth**: bcrypt passwords, revocable JWT sessions, centralized path isolation, guest permissions, and correct HTTP error semantics.
 - **Configurable & Extensible**: All key settings are environment-configurable. Backend and frontend are modular and easy to extend.
 - **Performance Optimizations**: Reduced redundant operations, improved database queries, and optimized logging.
+- **Complete File Management**: Resumable chunk uploads, folders, rename, copy, move, and batch deletion.
+- **Search & Sharing**: Incremental SQLite indexing and expiring, revocable scoped share links.
 
 ## 📦 Project Structure
 
@@ -61,6 +63,8 @@ export GOFI_ENABLE_DEBUG="false"
 - [Configuration](./doc/config.md)
 - [FAQ](./doc/faq.md)
 - [Contributing](./doc/contributing.md)
+- [Upgrade, Backup, and Restore](./doc/upgrade.md)
+- [Security Deployment Checklist](./doc/security.md)
 
 ## 🖼️ Preview
 

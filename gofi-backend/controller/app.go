@@ -15,6 +15,7 @@ func (handler *Handler) GetConfiguration(ctx *gin.Context) {
 		WriteApplicationError(ctx, err)
 		return
 	}
+	_ = handler.Application.Index.Rebuild()
 	Success(ctx, configuration)
 }
 
@@ -24,6 +25,7 @@ func (handler *Handler) GetAdminConfiguration(ctx *gin.Context) {
 		WriteApplicationError(ctx, err)
 		return
 	}
+	_ = handler.Application.Index.Rebuild()
 	Success(ctx, configuration)
 }
 

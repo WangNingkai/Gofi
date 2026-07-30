@@ -23,7 +23,8 @@ COPY gofi-backend/ ./
 COPY --from=frontend /src/gofi-frontend/dist ./env/dist
 RUN CGO_ENABLED=1 go build \
     -tags=production \
-    -ldflags="-w -s -X gofi/db.version=${VERSION}" \
+    -trimpath -buildvcs=false \
+    -ldflags="-w -s -buildid= -X gofi/db.version=${VERSION}" \
     -o /src/gofi .
 
 FROM alpine:3.22

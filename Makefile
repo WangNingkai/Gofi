@@ -13,6 +13,7 @@ TARGET_OS ?= $(shell $(GO) env GOOS)
 TARGET_ARCH ?= $(shell $(GO) env GOARCH)
 CC ?= cc
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct 2>/dev/null || echo 0)
 OUTPUT_NAME := gofi-$(TARGET_OS)-$(TARGET_ARCH)-$(MODE)
 
 .DEFAULT_GOAL := help
@@ -95,7 +96,8 @@ build-backend:
 	cd $(BACKEND_DIR) && \
 		CGO_ENABLED=1 GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) CC="$(CC)" \
 		$(GO) build -tags=$(MODE) \
-		-ldflags="-w -s -X gofi/db.version=$(VERSION)" \
+		-trimpath -buildvcs=false \
+		-ldflags="-w -s -buildid= -X gofi/db.version=$(VERSION)" \
 		-o ../$(OUTPUT_DIR)/$(OUTPUT_NAME) .
 
 smoke:

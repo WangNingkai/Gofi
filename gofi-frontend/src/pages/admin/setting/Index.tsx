@@ -27,6 +27,7 @@ import { clearSessionToken } from '@/features/auth/session'
 import { tokenState } from '@/states/common.state'
 import { useSetAtom } from 'jotai'
 import { useNavigate } from 'react-router-dom'
+import ShareManager from '@/features/shares/ShareManager'
 
 const Setting: React.FC = () => {
     const [processing, setProcessing] = useState(false)
@@ -312,6 +313,8 @@ const Setting: React.FC = () => {
                                 <div className="text-xs text-muted-foreground mt-1">{t('pages.setting.security.alert')}</div>
                             </div>
                         </div>
+
+                        <ShareManager />
                     </CardContent>
                 </Card>
             </div>

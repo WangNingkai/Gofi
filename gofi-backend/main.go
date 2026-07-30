@@ -60,6 +60,17 @@ func createApp() (*gin.Engine, error) {
 	}
 	runtimeConfiguration := env.GetConfiguration()
 	core := application.New(db.Engine(), runtimeConfiguration)
+	if publicConfiguration, publicErr := core.Configuration.Public(); publicErr == nil &&
+		publicConfiguration.Initialized && !env.IsTest() {
+		if cleanupErr := core.Uploads.CleanupExpired(); cleanupErr != nil {
+			tool.WithError(cleanupErr).Warn("清理过期上传会话失败")
+		}
+		go func() {
+			if rebuildErr := core.Index.Rebuild(); rebuildErr != nil {
+				tool.WithError(rebuildErr).Warn("后台文件索引重建失败")
+			}
+		}()
+	}
 	handler := controller.NewHandler(core)
 
 	app := gin.New()
@@ -170,6 +181,16 @@ func registerAPIRoutes(app *gin.Engine, handler *controller.Handler) {
 		api.HEAD("/download", optionalAuth, handler.Download)
 		api.POST("/upload", optionalAuth, middleware.CSRFProtection(), handler.Upload)
 		api.DELETE("/file", optionalAuth, middleware.CSRFProtection(), handler.DeleteFile)
+		api.POST("/directory", optionalAuth, middleware.CSRFProtection(), handler.CreateDirectory)
+		api.POST("/file/rename", optionalAuth, middleware.CSRFProtection(), handler.RenameFile)
+		api.POST("/file/copy", optionalAuth, middleware.CSRFProtection(), handler.CopyFile)
+		api.POST("/file/move", optionalAuth, middleware.CSRFProtection(), handler.MoveFile)
+		api.POST("/file/batch", optionalAuth, middleware.CSRFProtection(), handler.BatchFiles)
+		api.POST("/upload/session", optionalAuth, middleware.CSRFProtection(), handler.CreateUploadSession)
+		api.GET("/upload/session/:id", optionalAuth, handler.GetUploadSession)
+		api.PUT("/upload/session/:id/chunk", optionalAuth, middleware.CSRFProtection(), handler.UploadChunk)
+		api.POST("/upload/session/:id/complete", optionalAuth, middleware.CSRFProtection(), handler.CompleteUploadSession)
+		api.DELETE("/upload/session/:id", optionalAuth, middleware.CSRFProtection(), handler.CancelUploadSession)
 
 		// 用户相关路由
 		user := api.Group("/user")
@@ -192,5 +213,14 @@ func registerAPIRoutes(app *gin.Engine, handler *controller.Handler) {
 			permission.GET("/guest", handler.GetGuestPermissions)
 			permission.POST("/guest", requireAdmin, middleware.CSRFProtection(), handler.UpdateGuestPermissions)
 		}
+
+		api.GET("/search", optionalAuth, handler.SearchFiles)
+		api.POST("/search/rebuild", requireAdmin, middleware.CSRFProtection(), handler.RebuildIndex)
+		api.POST("/share", requireAdmin, middleware.CSRFProtection(), handler.CreateShare)
+		api.GET("/share", requireAdmin, handler.ListShares)
+		api.DELETE("/share/:id", requireAdmin, middleware.CSRFProtection(), handler.RevokeShare)
+		api.GET("/shared/:token", handler.FetchSharedFile)
+		api.GET("/shared/:token/download", handler.DownloadSharedFile)
+		api.HEAD("/shared/:token/download", handler.DownloadSharedFile)
 	}
 }

@@ -4,14 +4,18 @@ import {
     ChevronLeft,
     ChevronRight,
     Download,
+    Copy,
     Eraser,
     Folder,
     FolderOpen,
+    FolderPlus,
     Grid3X3,
     HardDrive,
     Home,
     List,
     MoreVertical,
+    Move,
+    Pencil,
     RefreshCw,
     Search,
     Share,
@@ -22,7 +26,17 @@ import {
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { deleteFileOrFolder, getFileDownloadUrl, getFilePreviewUrl, uploadFiles as uploadFilesRequest } from '@/features/files/api'
+import {
+    copyFile,
+    batchFiles,
+    createDirectory,
+    deleteFileOrFolder,
+    getFileDownloadUrl,
+    getFilePreviewUrl,
+    moveFile,
+    renameFile,
+    uploadFiles as uploadFilesRequest,
+} from '@/features/files/api'
 import type { DirectoryData, FileInfo } from '@/features/files/types'
 import FileIcon from '../../components/FileIcon'
 import MainLayout from '../../components/layouts/MainLayout/Index'
@@ -49,6 +63,7 @@ import {
     DropdownMenuTrigger
 } from '../../components/ui/dropdown-menu'
 import { Input } from '../../components/ui/input'
+import { Checkbox } from '../../components/ui/checkbox'
 import {
     Select,
     SelectContent,
@@ -72,6 +87,9 @@ import Toast from '../../utils/toast.util'
 import PageHeader from '../../components/PageHeader'
 import PathUtil from '../../utils/path.util'
 import { useDirectory } from '../../features/files/useDirectory'
+import { createShare } from '@/features/shares/api'
+import { searchFiles, type SearchResult } from '@/features/search/api'
+import { readSessionToken } from '@/features/auth/session'
 
 interface FilesProps {
     directoryData?: DirectoryData
@@ -92,11 +110,19 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [deletingItem, setDeletingItem] = useState<FileInfo | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
+    const [operation, setOperation] = useState<'mkdir' | 'rename' | 'copy' | 'move' | null>(null)
+    const [operationItem, setOperationItem] = useState<FileInfo | null>(null)
+    const [operationValue, setOperationValue] = useState('')
+    const [operationLoading, setOperationLoading] = useState(false)
+    const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set())
+    const [showBatchDeleteDialog, setShowBatchDeleteDialog] = useState(false)
+    const [batchLoading, setBatchLoading] = useState(false)
     const [showOverwriteDialog, setShowOverwriteDialog] = useState(false)
     const [overwriteFiles, setOverwriteFiles] = useState<File[]>([])
     const [pendingUploadFiles, setPendingUploadFiles] = useState<File[]>([])
     const [overwriteUpload, setOverwriteUpload] = useState(false)
     const [searchOpen, setSearchOpen] = useState(false)
+    const [indexedResults, setIndexedResults] = useState<SearchResult[]>([])
     const [searchPopoverAnchor, setSearchPopoverAnchor] = useState<null | HTMLElement>(null)
     const searchInputRef = useRef<HTMLInputElement>(null)
     const breadcrumbRef = useRef<HTMLDivElement>(null)
@@ -118,6 +144,17 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
             searchInputRef.current.focus();
         }
     }, [searchOpen]);
+
+    useEffect(() => {
+        if (searchQuery.trim().length < 2) {
+            setIndexedResults([])
+            return
+        }
+        const timer = window.setTimeout(() => {
+            void searchFiles(searchQuery, false).then(setIndexedResults).catch(() => setIndexedResults([]))
+        }, 250)
+        return () => window.clearTimeout(timer)
+    }, [searchQuery])
 
     // 如果有传入的directoryData，优先使用，否则请求API
     const { files: fileInfos, error, refresh: mutate, isLoading: fetching, isValidating } =
@@ -328,16 +365,21 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
         document.body.removeChild(link)
     }
 
-    const handleShare = (file: FileInfo) => {
-        const shareUrl = getFilePreviewUrl(file.path)
-        if (navigator.share) {
-            navigator.share({
-                title: file.name,
-                url: shareUrl
-            })
-        } else {
-            navigator.clipboard.writeText(shareUrl)
-            Toast.s(t('toast.link_copied'))
+    const handleShare = async (file: FileInfo) => {
+        try {
+            const share = await createShare(file.path, 24)
+            const shareUrl = `${window.location.origin}/shared/${share.token}`
+            if (navigator.share) {
+                await navigator.share({
+                    title: file.name,
+                    url: shareUrl
+                })
+            } else {
+                await navigator.clipboard.writeText(shareUrl)
+                Toast.s(t('toast.link_copied'))
+            }
+        } catch (reason) {
+            Toast.e(reason instanceof Error ? reason.message : t('pages.exception.403.description'))
         }
     }
 
@@ -359,6 +401,62 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
             Toast.e(e?.message || t('toast.delete-failed'))
         } finally {
             setDeleteLoading(false)
+        }
+    }
+
+    const openOperation = (kind: 'mkdir' | 'rename' | 'copy' | 'move', item: FileInfo | null = null) => {
+        setOperation(kind)
+        setOperationItem(item)
+        setOperationValue(kind === 'rename' ? item?.name || '' : kind === 'mkdir' ? '' : currentPath)
+    }
+
+    const confirmOperation = async () => {
+        if (!operation || !operationValue.trim()) return
+        setOperationLoading(true)
+        try {
+            if (operation === 'mkdir') await createDirectory(currentPath, operationValue.trim())
+            if (operation === 'rename' && operationItem) await renameFile(operationItem.path, operationValue.trim())
+            if (operation === 'copy' && operationItem) {
+                await copyFile(operationItem.path, `${operationValue.replace(/\/$/, '')}/${operationItem.name}`)
+            }
+            if (operation === 'move' && operationItem) {
+                await moveFile(operationItem.path, `${operationValue.replace(/\/$/, '')}/${operationItem.name}`)
+            }
+            setOperation(null)
+            await mutate()
+        } catch (reason) {
+            Toast.e(reason instanceof Error ? reason.message : t('pages.file-list.operation-failed'))
+        } finally {
+            setOperationLoading(false)
+        }
+    }
+
+    const toggleSelected = (path: string) => {
+        setSelectedPaths((current) => {
+            const next = new Set(current)
+            if (next.has(path)) next.delete(path)
+            else next.add(path)
+            return next
+        })
+    }
+
+    const confirmBatchDelete = async () => {
+        setBatchLoading(true)
+        try {
+            const results = await batchFiles(Array.from(selectedPaths, (source) => ({ operation: 'delete', source })))
+            const failed = results.filter((result) => !result.success)
+            if (failed.length > 0) {
+                Toast.e(t('pages.file-list.batch-partial', { count: failed.length }))
+            } else {
+                Toast.s(t('pages.file-list.delete-success'))
+            }
+            setSelectedPaths(new Set())
+            setShowBatchDeleteDialog(false)
+            await mutate()
+        } catch (reason) {
+            Toast.e(reason instanceof Error ? reason.message : t('pages.file-list.operation-failed'))
+        } finally {
+            setBatchLoading(false)
         }
     }
 
@@ -490,6 +588,17 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                 {/* 第二行：搜索、过滤、操作按钮 */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
+                        {selectedPaths.size > 0 && capabilities.remove && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive"
+                                onClick={() => setShowBatchDeleteDialog(true)}
+                                title={t('pages.file-list.batch-delete', { count: selectedPaths.size })}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        )}
                         {/* 悬浮搜索框 */}
                         <div className="relative">
                             <Button
@@ -522,6 +631,26 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                         onBlur={() => setSearchOpen(false)}
                                         className="h-9 text-sm rounded-md"
                                     />
+                                    {indexedResults.length > 0 && (
+                                        <div className="mt-2 max-h-64 overflow-y-auto border-t pt-1">
+                                            {indexedResults.slice(0, 10).map((result) => (
+                                                <button
+                                                    key={result.path}
+                                                    type="button"
+                                                    onMouseDown={(event) => event.preventDefault()}
+                                                    onClick={() => {
+                                                        setSearchOpen(false)
+                                                        navigate(PathUtil.buildFileUrl(result.path))
+                                                    }}
+                                                    className="block w-full truncate px-2 py-2 text-left text-xs hover:bg-muted"
+                                                    title={result.path}
+                                                >
+                                                    <span className="font-medium">{result.name}</span>
+                                                    <span className="ml-2 text-muted-foreground">{result.path}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -572,6 +701,18 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
 
                     <div className="flex items-center space-x-2">
                         {/* 上传文件按钮 */}
+                        {capabilities.upload && (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button onClick={() => openOperation('mkdir')} variant="ghost" size="icon" className="h-8 w-8 p-0">
+                                            <FolderPlus className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>{t('pages.file-list.new-folder')}</p></TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -750,6 +891,14 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                 onClick={() => onFileNameClick(item)}
                                 className="group relative bg-card border border-border rounded-lg p-4 hover:border-primary/50 hover:shadow-md transition-all cursor-pointer"
                             >
+                                {(capabilities.upload || capabilities.remove) && (
+                                    <Checkbox
+                                        checked={selectedPaths.has(item.path)}
+                                        onCheckedChange={() => toggleSelected(item.path)}
+                                        onClick={(event) => event.stopPropagation()}
+                                        className="absolute bottom-3 right-3"
+                                    />
+                                )}
                                 <div className="flex items-start justify-between mb-3">
                                     <div className="flex items-center space-x-2">
                                         {getFileIcon(item)}
@@ -758,7 +907,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                         </Badge>
                                     </div>
                                     <div className="flex items-center space-x-1">
-                                        {(capabilities.download || capabilities.remove) && <DropdownMenu>
+                                        {(capabilities.download || capabilities.remove || capabilities.upload) && <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                                                     <MoreVertical className="h-4 w-4" />
@@ -771,8 +920,8 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                                         {t('tooltip.download')}
                                                     </DropdownMenuItem>
                                                 )}
-                                                {!item.isDirectory && capabilities.download && (
-                                                    <DropdownMenuItem onClick={e => { e.stopPropagation(); handleShare(item); }}>
+                                                {!item.isDirectory && capabilities.download && readSessionToken() && (
+                                                    <DropdownMenuItem onClick={e => { e.stopPropagation(); void handleShare(item); }}>
                                                         <Share className="mr-2 h-4 w-4" />
                                                         {t('tooltip.share')}
                                                     </DropdownMenuItem>
@@ -784,6 +933,22 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                                             <Trash2 className="mr-2 h-4 w-4" />
                                                             {t('menu.delete')}
                                                         </DropdownMenuItem>
+                                                    </>
+                                                )}
+                                                {capabilities.upload && (
+                                                    <>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem onClick={e => { e.stopPropagation(); openOperation('copy', item) }}>
+                                                            <Copy className="mr-2 h-4 w-4" />{t('pages.file-list.copy')}
+                                                        </DropdownMenuItem>
+                                                        {capabilities.remove && <>
+                                                            <DropdownMenuItem onClick={e => { e.stopPropagation(); openOperation('rename', item) }}>
+                                                                <Pencil className="mr-2 h-4 w-4" />{t('pages.file-list.rename')}
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={e => { e.stopPropagation(); openOperation('move', item) }}>
+                                                                <Move className="mr-2 h-4 w-4" />{t('pages.file-list.move')}
+                                                            </DropdownMenuItem>
+                                                        </>}
                                                     </>
                                                 )}
                                             </DropdownMenuContent>
@@ -845,6 +1010,13 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                                     className="flex items-center space-x-3 cursor-pointer"
                                                     onClick={() => onFileNameClick(item)}
                                                 >
+                                                    {(capabilities.upload || capabilities.remove) && (
+                                                        <Checkbox
+                                                            checked={selectedPaths.has(item.path)}
+                                                            onCheckedChange={() => toggleSelected(item.path)}
+                                                            onClick={(event) => event.stopPropagation()}
+                                                        />
+                                                    )}
                                                     {getFileIcon(item)}
                                                     <span className="font-medium text-foreground truncate max-w-[300px]">
                                                         {item.name}
@@ -864,7 +1036,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center space-x-1">
-                                                    {(capabilities.download || capabilities.remove) && <DropdownMenu>
+                                                    {(capabilities.download || capabilities.remove || capabilities.upload) && <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
                                                             <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                                                                 <MoreVertical className="h-4 w-4" />
@@ -877,10 +1049,10 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                                                         <Download className="mr-2 h-4 w-4" />
                                                                         {t('tooltip.download')}
                                                                     </DropdownMenuItem>
-                                                                    <DropdownMenuItem onClick={e => { e.stopPropagation(); handleShare(item); }}>
+                                                                    {readSessionToken() && <DropdownMenuItem onClick={e => { e.stopPropagation(); void handleShare(item); }}>
                                                                         <Share className="mr-2 h-4 w-4" />
                                                                         {t('tooltip.share')}
-                                                                    </DropdownMenuItem>
+                                                                    </DropdownMenuItem>}
                                                                 </>
                                                             )}
                                                             {capabilities.remove && (
@@ -892,6 +1064,20 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                                                     </DropdownMenuItem>
                                                                 </>
                                                             )}
+                                                            {capabilities.upload && <>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem onClick={e => { e.stopPropagation(); openOperation('copy', item) }}>
+                                                                    <Copy className="mr-2 h-4 w-4" />{t('pages.file-list.copy')}
+                                                                </DropdownMenuItem>
+                                                                {capabilities.remove && <>
+                                                                    <DropdownMenuItem onClick={e => { e.stopPropagation(); openOperation('rename', item) }}>
+                                                                        <Pencil className="mr-2 h-4 w-4" />{t('pages.file-list.rename')}
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={e => { e.stopPropagation(); openOperation('move', item) }}>
+                                                                        <Move className="mr-2 h-4 w-4" />{t('pages.file-list.move')}
+                                                                    </DropdownMenuItem>
+                                                                </>}
+                                                            </>}
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>}
                                                 </div>
@@ -1010,6 +1196,46 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                         </ConfirmDialogFooter>
                     </ConfirmDialogContent>
                 </ConfirmDialog>
+
+                <Dialog open={operation !== null} onOpenChange={(open) => !open && setOperation(null)}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>{operation ? t(`pages.file-list.operation.${operation}.title`) : ''}</DialogTitle>
+                        </DialogHeader>
+                        <Input
+                            value={operationValue}
+                            onChange={(event) => setOperationValue(event.target.value)}
+                            placeholder={operation === 'mkdir' || operation === 'rename'
+                                ? t('pages.file-list.name-placeholder')
+                                : t('pages.file-list.destination-placeholder')}
+                        />
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setOperation(null)} disabled={operationLoading}>
+                                {t('form.cancel')}
+                            </Button>
+                            <Button onClick={() => void confirmOperation()} disabled={operationLoading || !operationValue.trim()}>
+                                {t('common.done')}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                <Dialog open={showBatchDeleteDialog} onOpenChange={setShowBatchDeleteDialog}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>{t('pages.file-list.batch-delete', { count: selectedPaths.size })}</DialogTitle>
+                        </DialogHeader>
+                        <p className="text-sm text-muted-foreground">{t('pages.file-list.batch-delete-description')}</p>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setShowBatchDeleteDialog(false)} disabled={batchLoading}>
+                                {t('form.cancel')}
+                            </Button>
+                            <Button variant="destructive" onClick={() => void confirmBatchDelete()} disabled={batchLoading}>
+                                <Trash2 className="mr-2 h-4 w-4" />{t('menu.delete')}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
 
                 {/* 隐藏的文件输入元素 */}
                 <input

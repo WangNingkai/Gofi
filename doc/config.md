@@ -13,6 +13,7 @@ Gofi 通过环境变量读取运行配置，也会自动读取当前工作目录
 | `GOFI_MAX_REQUESTS_PER_MINUTE` | `100` | 每个来源 IP 的 API 请求上限；登录接口另限制为每分钟 5 次 |
 | `GOFI_ALLOWED_ORIGINS` | 开发模式允许本机 `3000`、`5173` 端口；生产模式为空 | 允许跨域的完整 Origin，多个值使用英文逗号分隔 |
 | `GOFI_TRUSTED_PROXIES` | 空 | 可信反向代理地址或网段，多个值使用英文逗号分隔 |
+| `GOFI_ENABLE_INDEX` | `true` | 是否启用 SQLite 文件名、路径和小文本内容索引 |
 | `GOFI_LOG_LEVEL` | `info` | 日志级别 |
 | `GOFI_ENABLE_DEBUG` | `false` | 是否启用详细请求日志；即使启用也不会记录请求体、密码、Token 或 Cookie |
 
