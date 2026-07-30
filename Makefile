@@ -1,88 +1,140 @@
-# Gofi 项目 Makefile
+SHELL := /bin/sh
 
-# 变量定义
-FRONTEND_DIR=gofi-frontend
-BACKEND_DIR=gofi-backend
-FRONTEND_DIST=$(FRONTEND_DIR)/dist
-BACKEND_DIST=$(BACKEND_DIR)/env/dist
-BACKEND_OUTPUT=$(BACKEND_DIR)/output
-OUTPUT=output
-GOFI_BIN=gofi
+FRONTEND_DIR := gofi-frontend
+BACKEND_DIR := gofi-backend
+FRONTEND_DIST := $(FRONTEND_DIR)/dist
+BACKEND_DIST := $(BACKEND_DIR)/env/dist
+OUTPUT_DIR := output
 
-# 构建模式，支持 production/preview，默认 production
-MODE?=production
-GO_BUILD_TAGS=$(MODE)
+GO ?= go
+PNPM ?= pnpm
+MODE ?= production
+TARGET_OS ?= $(shell $(GO) env GOOS)
+TARGET_ARCH ?= $(shell $(GO) env GOARCH)
+CC ?= cc
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+OUTPUT_NAME := gofi-$(TARGET_OS)-$(TARGET_ARCH)-$(MODE)
 
-# 版本号自动获取
-VERSION=$(shell git log -1 --pretty=%h)
+.DEFAULT_GOAL := help
 
-.PHONY: all clean preview production printinfo build-all build-backend build-frontend clean-output clean-frontend-dist copy-frontend-to-backend after-build generate-checksums
+.PHONY: help install install-frontend install-backend \
+	dev dev-frontend dev-backend \
+	test test-frontend test-backend \
+	check check-frontend check-backend fmt-check \
+	build build-frontend stage-frontend build-backend \
+	smoke \
+	build-linux-amd64 build-linux-arm64 cross-build checksums \
+	clean clean-frontend clean-backend-dist clean-output printinfo
 
-all: build-all
+help:
+	@printf '%s\n' \
+		'Gofi 项目命令：' \
+		'  make install       安装前端依赖并下载后端模块' \
+		'  make dev           同时启动前后端开发服务' \
+		'  make test          运行前后端测试' \
+		'  make check         运行格式、静态检查、测试和前端构建' \
+		'  make build         构建当前平台的生产二进制' \
+		'  make smoke         验证已构建的生产二进制' \
+		'  make cross-build   构建 Linux amd64/arm64 发布产物' \
+		'  make clean         清理所有生成物'
 
-build-all: clean-output build-frontend copy-frontend-to-backend build-backend after-build generate-checksums
+install: install-frontend install-backend
 
-production:
-	@echo "🚀 [生产模式] 打包前端和后端..."
-	$(MAKE) MODE=production build-all
+install-frontend:
+	$(PNPM) --dir $(FRONTEND_DIR) install --frozen-lockfile
 
-preview:
-	@echo "🎭 [演示模式] 打包前端和后端..."
-	$(MAKE) MODE=preview build-all
+install-backend:
+	cd $(BACKEND_DIR) && $(GO) mod download
 
-clean-output:
-	@echo "🧹 清空输出目录..."
-	@rm -rf $(OUTPUT)
-	@mkdir -p $(OUTPUT)
+dev:
+	$(MAKE) -j2 dev-backend dev-frontend
 
-clean-frontend-dist:
-	@echo "🧹 清理前端产物目录..."
-	@rm -rf $(FRONTEND_DIST)
+dev-frontend:
+	$(PNPM) --dir $(FRONTEND_DIR) dev
 
-build-frontend: clean-frontend-dist
-	@echo "🔧 打包前端... (模式: $(MODE))"
-	cd $(FRONTEND_DIR) && \
-		pnpm install && \
-		pnpm run build$(if $(filter preview,$(MODE)),:demo,)
+dev-backend:
+	cd $(BACKEND_DIR) && $(GO) run .
 
-copy-frontend-to-backend:
-	@echo "📁 复制前端产物到后端目录..."
-	@rm -rf $(BACKEND_DIST)
-	@cp -r $(FRONTEND_DIST) $(BACKEND_DIST)
+test: test-backend test-frontend
+
+test-frontend:
+	$(PNPM) --dir $(FRONTEND_DIR) test:run
+
+test-backend:
+	cd $(BACKEND_DIR) && $(GO) test ./...
+
+check: check-backend check-frontend
+
+check-frontend:
+	$(PNPM) --dir $(FRONTEND_DIR) typecheck
+	$(PNPM) --dir $(FRONTEND_DIR) test:run
+	$(PNPM) --dir $(FRONTEND_DIR) build
+
+check-backend: fmt-check
+	cd $(BACKEND_DIR) && $(GO) vet ./...
+	cd $(BACKEND_DIR) && $(GO) test -race ./...
+
+fmt-check:
+	@files="$$(cd $(BACKEND_DIR) && gofmt -l .)"; \
+	if [ -n "$$files" ]; then \
+		printf '以下 Go 文件需要执行 gofmt：\n%s\n' "$$files"; \
+		exit 1; \
+	fi
+
+build: clean-output build-frontend stage-frontend build-backend checksums
+
+build-frontend:
+	$(PNPM) --dir $(FRONTEND_DIR) build
+
+stage-frontend: clean-backend-dist
+	mkdir -p $(BACKEND_DIST)
+	cp -R $(FRONTEND_DIST)/. $(BACKEND_DIST)/
 
 build-backend:
-	@echo "🔧 打包后端... (模式: $(MODE))"
+	mkdir -p $(OUTPUT_DIR)
 	cd $(BACKEND_DIR) && \
-		go mod tidy && \
-		CGO_ENABLED=1 CGO_CFLAGS="-Wno-return-local-addr" go build -tags=$(GO_BUILD_TAGS) -ldflags='-w -s -X gofi/db.version=$(VERSION)' -o $(GOFI_BIN)-linux-amd64-$(MODE)
-	@mkdir -p $(BACKEND_OUTPUT)
-	@mv $(BACKEND_DIR)/$(GOFI_BIN)-linux-amd64-$(MODE) $(BACKEND_OUTPUT)/
-	@echo "[安全提示] 后端模式由 build tag 决定，前端无法绕过！"
+		CGO_ENABLED=1 GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) CC="$(CC)" \
+		$(GO) build -tags=$(MODE) \
+		-ldflags="-w -s -X gofi/db.version=$(VERSION)" \
+		-o ../$(OUTPUT_DIR)/$(OUTPUT_NAME) .
 
-after-build:
-	@echo "📦 整理最终产物到 output 目录..."
-	@cp -r $(BACKEND_OUTPUT)/* $(OUTPUT)/
-	@rm -rf $(BACKEND_OUTPUT)
-	@rm -rf $(BACKEND_DIR)/env/dist
-	@echo "✅ 构建完成！产物位置: $(OUTPUT)/"
+smoke:
+	sh scripts/smoke.sh "$(OUTPUT_DIR)/$(OUTPUT_NAME)"
 
-generate-checksums:
-	@echo "🔐 生成 SHA256 校验文件..."
-	@cd $(OUTPUT) && \
-		for file in $(GOFI_BIN)*; do \
-			if [ -f "$$file" ]; then \
-				sha256sum "$$file" > "$$file.sha256"; \
-				echo "✅ 生成校验: $$file.sha256"; \
-			fi; \
-		done
+build-linux-amd64:
+	$(MAKE) build-backend TARGET_OS=linux TARGET_ARCH=amd64 CC=gcc
 
-clean:
-	@echo "🧹 清理构建产物..."
-	@rm -rf $(FRONTEND_DIST) $(BACKEND_DIST) $(BACKEND_OUTPUT) $(OUTPUT)
+build-linux-arm64:
+	$(MAKE) build-backend TARGET_OS=linux TARGET_ARCH=arm64 CC=aarch64-linux-gnu-gcc
+
+cross-build: clean-output build-frontend stage-frontend build-linux-amd64 build-linux-arm64 checksums
+
+checksums:
+	@cd $(OUTPUT_DIR) && for file in gofi-*; do \
+		[ -f "$$file" ] || continue; \
+		case "$$file" in *.sha256) continue ;; esac; \
+		if command -v sha256sum >/dev/null 2>&1; then \
+			sha256sum "$$file" > "$$file.sha256"; \
+		else \
+			shasum -a 256 "$$file" > "$$file.sha256"; \
+		fi; \
+	done
+
+clean: clean-frontend clean-backend-dist clean-output
+
+clean-frontend:
+	rm -rf $(FRONTEND_DIST)
+
+clean-backend-dist:
+	rm -rf $(BACKEND_DIST)
+
+clean-output:
+	rm -rf $(OUTPUT_DIR)
+	mkdir -p $(OUTPUT_DIR)
 
 printinfo:
-	@echo "====> 当前构建模式: $(MODE)"
-	@echo "====> 版本: $(VERSION)"
-	@echo "====> 前端目录: $(FRONTEND_DIR)"
-	@echo "====> 后端目录: $(BACKEND_DIR)"
-	@echo "====> 输出目录: $(OUTPUT)" 
+	@printf '%s\n' \
+		"模式：$(MODE)" \
+		"版本：$(VERSION)" \
+		"目标平台：$(TARGET_OS)/$(TARGET_ARCH)" \
+		"输出：$(OUTPUT_DIR)/$(OUTPUT_NAME)"

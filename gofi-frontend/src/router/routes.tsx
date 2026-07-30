@@ -2,6 +2,7 @@ import React, { lazy } from 'react'
 import { Navigate, RouteObject } from 'react-router-dom'
 import ProtectedRoute from './ProtectedRoute'
 import PublicRoute from './PublicRoute'
+import FileAccessRoute from './FileAccessRoute'
 
 const NotFound = lazy(() => import('../pages/exception/404'))
 const UnAuthorized = lazy(() => import('../pages/exception/403'))
@@ -42,7 +43,7 @@ export const appRoutes: RouteObject[] = [
         element: <ServerError />,
     },
     {
-        element: <ProtectedRoute />,
+        element: <FileAccessRoute />,
         children: [
             {
                 path: '/',
@@ -52,6 +53,11 @@ export const appRoutes: RouteObject[] = [
                 path: '/file/*',
                 element: <FileRouter />,
             },
+        ],
+    },
+    {
+        element: <ProtectedRoute />,
+        children: [
             {
                 path: '/admin/setting',
                 element: <Setting />,
@@ -62,4 +68,4 @@ export const appRoutes: RouteObject[] = [
         path: '*',
         element: <Navigate to="/404" replace />,
     },
-] 
+]

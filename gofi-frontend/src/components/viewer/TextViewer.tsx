@@ -58,13 +58,7 @@ const TextViewer: React.FC<IProps> = ({
     const validateTextContent = (text: string): boolean => {
         // 只排除极少数控制字符（如全是不可见字符或二进制）
         const controlChars = text.match(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g)
-        const result = !(controlChars && controlChars.length > text.length * 0.3)
-        console.log('[TextViewer] validateTextContent:', {
-            length: text.length,
-            controlChars: controlChars?.length,
-            result,
-        })
-        return result
+        return !(controlChars && controlChars.length > text.length * 0.3)
     }
 
     const [themeVersion, setThemeVersion] = useState(0)
@@ -81,7 +75,6 @@ const TextViewer: React.FC<IProps> = ({
         if (content) {
             const isValid = validateTextContent(content)
             setIsValidText(isValid)
-            console.log('[TextViewer] useEffect content', { isValid, contentSample: content.slice(0, 200), fileInfo })
             if (isValid) {
                 setPlainText(content)
             } else {
@@ -96,7 +89,6 @@ const TextViewer: React.FC<IProps> = ({
                     const value = await (await fetch(url)).text()
                     const isValid = validateTextContent(value)
                     setIsValidText(isValid)
-                    console.log('[TextViewer] useEffect url', { isValid, valueSample: value.slice(0, 200), fileInfo })
                     if (isValid) {
                         setPlainText(value)
                     } else {
@@ -126,7 +118,6 @@ const TextViewer: React.FC<IProps> = ({
 
     // 如果内容不是有效的文本，显示错误页面
     if (!isValidText) {
-        console.warn('[TextViewer] 内容被判定为无效文本', { fileInfo, plainText })
         return (
             <div className="w-full max-h-[600px] flex flex-col relative">
                 {/* 工具栏组件 */}
@@ -283,10 +274,6 @@ const TextViewer: React.FC<IProps> = ({
                         />
                     )
                 ) : (
-                    ((() => {
-                        console.log('[TextViewer] 正在加载或无内容', { fileInfo })
-                        return null
-                    })(),
                     (
                         <>
                             <LogoLoading />
@@ -296,7 +283,7 @@ const TextViewer: React.FC<IProps> = ({
                                 </span>
                             </div>
                         </>
-                    ))
+                    )
                 )}
             </div>
         </div>

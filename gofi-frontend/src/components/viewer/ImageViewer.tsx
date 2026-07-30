@@ -3,6 +3,7 @@ import ImageViewerToolbar from './ImageViewerToolbar'
 import LogoLoading from '../LogoLoading'
 import PathUtil from '@/utils/path.util'
 import Toast from '@/utils/toast.util'
+import { useTranslation } from 'react-i18next'
 
 /**
  * 图片查看器组件的属性接口
@@ -42,6 +43,7 @@ const ImageViewer: React.FC<IProps> = ({
     onBackToOriginal,
     showBackToOriginal,
 }) => {
+    const { t } = useTranslation()
     // 缩放相关 state
     const [fitScale, setFitScale] = useState(1) // 适应窗口时的缩放比例
     const [scale, setScale] = useState(1) // 相对于fitToScreen的缩放倍数
@@ -126,7 +128,7 @@ const ImageViewer: React.FC<IProps> = ({
                     if (currentIndex > 0) {
                         onNavigate?.(currentIndex - 1)
                     } else {
-                        Toast.i('当前已经是第一张图片')
+                        Toast.i(t('component.viewer.first-image'))
                     }
                     break
                 case 'ArrowRight':
@@ -134,12 +136,12 @@ const ImageViewer: React.FC<IProps> = ({
                     if (currentIndex < imageList.length - 1) {
                         onNavigate?.(currentIndex + 1)
                     } else {
-                        Toast.i('当前已经是最后一张图片')
+                        Toast.i(t('component.viewer.last-image'))
                     }
                     break
             }
         },
-        [currentIndex, imageList.length, onNavigate],
+        [currentIndex, imageList.length, onNavigate, t],
     )
 
     // 添加键盘事件监听
@@ -245,7 +247,7 @@ const ImageViewer: React.FC<IProps> = ({
         setPosition({ x: 0, y: 0 })
 
         // 延迟执行，确保DOM更新完成
-        fitToScreenTimeoutRef.current = setTimeout(() => {
+        fitToScreenTimeoutRef.current = window.setTimeout(() => {
             if (!imageRef.current || !imageContainerRef.current) return
 
             // 获取图片的原始尺寸
@@ -441,7 +443,9 @@ const ImageViewer: React.FC<IProps> = ({
                         <div className="flex flex-col items-center space-y-4">
                             <LogoLoading />
                             <div className="text-center space-y-2">
-                                <span className="text-sm text-muted-foreground font-medium">正在加载图片</span>
+                                <span className="text-sm text-muted-foreground font-medium">
+                                    {t('component.viewer.image-loading')}
+                                </span>
                                 {url && (
                                     <div className="text-xs text-muted-foreground">
                                         {PathUtil.getFileNameFromUrl(url)} ({currentIndex + 1}/{imageList.length})

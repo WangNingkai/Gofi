@@ -10,6 +10,9 @@ Gofi 是一款现代化、开源的 Web 文件索引与管理器，前后端全�
 - [配置说明](./config.md)
 - [常见问题](./faq.md)
 - [贡献指南](./contributing.md)
+- [功能现状矩阵](./feature-matrix.md)
+- [目标架构](./architecture.md)
+- [重构路线图](./roadmap.md)
 
 ## 项目结构
 
@@ -20,4 +23,4 @@ Gofi 是一款现代化、开源的 Web 文件索引与管理器，前后端全�
 
 ---
 
-如需补充文档内容，请直接在本目录下添加或修改 Markdown 文件。 
+如需补充文档内容，请直接在本目录下添加或修改 Markdown 文件。

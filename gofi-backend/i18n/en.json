@@ -15,5 +15,21 @@
   "error.invalid_request": "Invalid request",
   "user.login_failed_username_or_password": "Invalid username or password",
   "user.invalid_credentials": "Invalid username or password",
-  "permission.guest_query_failed": "Guest permissions query failed"
-} 
+  "permission.guest_query_failed": "Guest permissions query failed",
+  "error.operation_not_allowed_preview": "This operation is unavailable in preview mode",
+  "error.directory_not_exist": "Directory does not exist: %s",
+  "error.not_directory": "Path is not a directory: %s",
+  "error.already_initialized": "The system is already initialized",
+  "error.param_parse_failed": "Failed to parse parameters: %s",
+  "auth.not_authorized": "Authentication credentials are invalid or expired",
+  "auth.insufficient_permissions": "Insufficient permissions",
+  "error.conflict": "Resource state conflict",
+  "error.not_initialized": "The system is not initialized",
+  "error.not_found": "Resource not found",
+  "error.invalid_origin": "Invalid request origin",
+  "error.access_denied": "Access denied",
+  "error.too_many_requests": "Too many requests, please try again later",
+  "error.global_panic": "Request processing failed",
+  "error.api_warn": "Request processing failed",
+  "success.logout": "Logout successful"
+}

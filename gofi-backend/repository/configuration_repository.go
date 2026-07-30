@@ -2,6 +2,8 @@ package repository
 
 import (
 	"gofi/db"
+
+	"github.com/go-xorm/xorm"
 )
 
 // ConfigurationRepository 配置数据访问接口
@@ -17,16 +19,18 @@ type ConfigurationRepository interface {
 }
 
 // configurationRepository 配置数据访问实现
-type configurationRepository struct{}
+type configurationRepository struct {
+	engine *xorm.Engine
+}
 
 // NewConfigurationRepository 创建配置Repository实例
-func NewConfigurationRepository() ConfigurationRepository {
-	return &configurationRepository{}
+func NewConfigurationRepository(engine *xorm.Engine) ConfigurationRepository {
+	return &configurationRepository{engine: engine}
 }
 
 func (r *configurationRepository) Get() (*db.Configuration, error) {
 	var config = new(db.Configuration)
-	has, err := db.Engine().Get(config)
+	has, err := r.engine.Get(config)
 	if err != nil {
 		return nil, err
 	}
@@ -44,11 +48,11 @@ func (r *configurationRepository) Get() (*db.Configuration, error) {
 }
 
 func (r *configurationRepository) Update(config *db.Configuration) error {
-	_, err := db.Engine().UseBool().AllCols().Update(config)
+	_, err := r.engine.ID(config.Id).UseBool().AllCols().Update(config)
 	return err
 }
 
 func (r *configurationRepository) Create(config *db.Configuration) error {
-	_, err := db.Engine().InsertOne(config)
+	_, err := r.engine.InsertOne(config)
 	return err
 }

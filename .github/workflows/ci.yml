@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: 检查与构建
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v6
+
+      - name: 安装 Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: .go-version
+          cache-dependency-path: gofi-backend/go.sum
+
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          package_json_file: gofi-frontend/package.json
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+          cache-dependency-path: gofi-frontend/pnpm-lock.yaml
+
+      - name: 安装交叉编译工具链
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+
+      - name: 安装依赖
+        run: make install
+
+      - name: 运行完整检查
+        run: make check
+
+      - name: 构建 Linux 发布产物
+        run: make cross-build
+
+      - name: 验证 amd64 生产二进制
+        run: make smoke TARGET_OS=linux TARGET_ARCH=amd64
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v7
+        with:
+          name: gofi-linux
+          path: output/*
+          if-no-files-found: error
+          retention-days: 7
+
+  docker:
+    name: Docker 构建
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v6
+
+      - name: 配置 QEMU
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+
+      - name: 配置 Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: 构建多架构镜像
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

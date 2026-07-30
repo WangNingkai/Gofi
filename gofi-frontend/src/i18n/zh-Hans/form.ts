@@ -13,13 +13,12 @@ export default {
     'form.login.validation.password-required': '密码不能为空',
     'form.login.validation.username-min-length': '用户名至少3个字符',
     'form.login.validation.password-min-length': '密码至少6个字符',
-    'form.login.preview-mode.title': '预览模式：',
-    'form.login.preview-mode.description': '用户名: admin, 密码: password',
-
     // 设置表单
     'form.setting.password.placeholder': '请输入新密码',
+    'form.setting.password.current-placeholder': '请输入当前密码',
+    'form.setting.password.confirm-placeholder': '请再次输入新密码',
     'form.setting.password.validation.required': '请输入新密码',
-    'form.setting.password.validation.min-length': '密码至少6个字符',
+    'form.setting.password.validation.min-length': '密码至少 10 个字符',
     'form.setting.storage.path.placeholder': '请输入存储路径',
     'form.setting.storage.path.validation.required': '请输入存储路径',
     'form.setting.storage.path.validation.invalid': '存储路径格式无效',
@@ -44,4 +43,4 @@ export default {
     'form.setting.language.en': 'English',
     'form.setting.theme.label': '主题',
     'form.setting.theme.placeholder': '选择主题',
-} 
+}

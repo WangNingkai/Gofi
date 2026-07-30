@@ -1,80 +1,69 @@
 import React, { useEffect, useState } from 'react'
-import { RiWifiLine, RiWifiOffLine, RiRefreshLine } from 'react-icons/ri'
+import { RiRefreshLine, RiWifiOffLine } from 'react-icons/ri'
+import { useTranslation } from 'react-i18next'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
 import Toast from '../utils/toast.util'
-import i18n from '../i18n'
 
 interface NetworkStatusProps {
     className?: string
 }
 
 const NetworkStatus: React.FC<NetworkStatusProps> = ({ className }) => {
+    const { t } = useTranslation()
     const [isOnline, setIsOnline] = useState(navigator.onLine)
     const [isChecking, setIsChecking] = useState(false)
 
     useEffect(() => {
         const handleOnline = () => {
             setIsOnline(true)
-            Toast.s('网络连接已恢复')
+            Toast.s(t('toast.network-restored'))
         }
-
         const handleOffline = () => {
             setIsOnline(false)
-            Toast.networkError('网络连接已断开', '请检查网络设置')
+            Toast.networkError(t('toast.network-disconnected'), t('toast.network-error-detail'))
         }
-
         window.addEventListener('online', handleOnline)
         window.addEventListener('offline', handleOffline)
-
         return () => {
             window.removeEventListener('online', handleOnline)
             window.removeEventListener('offline', handleOffline)
         }
-    }, [])
+    }, [t])
 
     const handleRetry = async () => {
         setIsChecking(true)
         try {
-            // 尝试访问一个简单的资源来测试网络连接
-            await fetch('/api/health', { 
-                method: 'HEAD',
-                cache: 'no-cache'
-            })
+            const response = await fetch('/api/configuration', { cache: 'no-cache' })
+            if (!response.ok) throw new Error('health check failed')
             setIsOnline(true)
-            Toast.s('网络连接正常')
-        } catch (error) {
+            Toast.s(t('toast.network-restored'))
+        } catch {
             setIsOnline(false)
-            Toast.networkError('网络连接失败', '请检查网络设置或稍后重试')
+            Toast.networkError(t('toast.network-error'), t('toast.network-error-detail'))
         } finally {
             setIsChecking(false)
         }
     }
 
-    if (isOnline) {
-        return null // 在线时隐藏组件
-    }
+    if (isOnline) return null
 
     return (
-        <div className={`fixed top-4 right-4 z-50 ${className}`}>
-            <div className="bg-destructive/90 backdrop-blur-sm border border-destructive/20 rounded-lg p-3 shadow-lg">
+        <div className={`fixed top-4 right-4 z-50 ${className ?? ''}`}>
+            <div className="bg-destructive/90 border border-destructive/20 rounded-md p-3 shadow-lg">
                 <div className="flex items-center space-x-2">
                     <RiWifiOffLine className="text-white h-4 w-4" />
-                    <span className="text-white text-sm font-medium">
-                        网络连接异常
-                    </span>
+                    <span className="text-white text-sm font-medium">{t('toast.network-error')}</span>
                     <Button
-                        size="sm"
+                        size="icon"
                         variant="ghost"
                         onClick={handleRetry}
                         disabled={isChecking}
-                        className="text-white hover:text-white hover:bg-white/20 h-6 px-2"
+                        className="text-white hover:text-white hover:bg-white/20 h-6 w-6"
+                        title={t('common.retry')}
                     >
-                        {isChecking ? (
-                            <div className="animate-spin h-3 w-3 border border-white border-t-transparent rounded-full" />
-                        ) : (
-                            <RiRefreshLine className="h-3 w-3" />
-                        )}
+                        {isChecking
+                            ? <span className="animate-spin h-3 w-3 border border-white border-t-transparent rounded-full" />
+                            : <RiRefreshLine className="h-3 w-3" />}
                     </Button>
                 </div>
             </div>
@@ -82,4 +71,4 @@ const NetworkStatus: React.FC<NetworkStatusProps> = ({ className }) => {
     )
 }
 
-export default NetworkStatus 
+export default NetworkStatus

@@ -1,8 +1,8 @@
 export default {
-    'toolbar.file-size': 'File Size',
-    'list.file-name': 'File Name',
-    'list.file-size': 'Size',
-    'list.last-modified-time': 'Last Modified Time',
+    'component.footer.about': 'About',
+    'component.footer.version': 'Version {{version}}',
+    'component.viewer.first-image': 'This is the first image',
+    'component.viewer.last-image': 'This is the last image',
     'component.pagination.page-info': 'Page {{current}} of {{total}}',
     'component.pagination.previous': 'Previous',
     'component.pagination.next': 'Next',

@@ -1,4 +1,8 @@
 export default {
+    'component.footer.about': '关于',
+    'component.footer.version': '版本 {{version}}',
+    'component.viewer.first-image': '当前已经是第一张图片',
+    'component.viewer.last-image': '当前已经是最后一张图片',
     // 分页组件
     'component.pagination.page-info': '第 {{current}} 页，共 {{total}} 页',
     'component.pagination.previous': '上一页',

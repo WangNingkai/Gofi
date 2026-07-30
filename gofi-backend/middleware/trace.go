@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"gofi/tool"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,7 +19,7 @@ func TraceMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 优先使用客户端传递的 request_id，否则生成新的
 		requestID := c.GetHeader(RequestIDHeader)
-		if requestID == "" {
+		if !validRequestID(requestID) {
 			requestID = generateRequestID()
 		}
 
@@ -34,6 +35,18 @@ func TraceMiddleware() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+func validRequestID(value string) bool {
+	if value == "" || len(value) > 64 {
+		return false
+	}
+	return strings.IndexFunc(value, func(character rune) bool {
+		return !(character >= 'a' && character <= 'z') &&
+			!(character >= 'A' && character <= 'Z') &&
+			!(character >= '0' && character <= '9') &&
+			character != '-' && character != '_'
+	}) == -1
 }
 
 // GetRequestID 从 gin 上下文获取 request_id

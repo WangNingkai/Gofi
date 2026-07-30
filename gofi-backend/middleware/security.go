@@ -1,8 +1,10 @@
 package middleware
 
 import (
+	"gofi/i18n"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 
@@ -35,14 +37,26 @@ var (
 func SetSecurityConfig(config *SecurityConfig) {
 	configMutex.Lock()
 	defer configMutex.Unlock()
-	securityConfig = config
+	if config == nil {
+		return
+	}
+	securityConfig = cloneSecurityConfig(config)
 }
 
 // GetSecurityConfig 获取安全配置
 func GetSecurityConfig() *SecurityConfig {
 	configMutex.RLock()
 	defer configMutex.RUnlock()
-	return securityConfig
+	return cloneSecurityConfig(securityConfig)
+}
+
+func cloneSecurityConfig(config *SecurityConfig) *SecurityConfig {
+	return &SecurityConfig{
+		Whitelist:  append([]string(nil), config.Whitelist...),
+		Blacklist:  append([]string(nil), config.Blacklist...),
+		EnableCSRF: config.EnableCSRF,
+		EnableXSS:  config.EnableXSS,
+	}
 }
 
 // IPFilter IP 过滤中间件
@@ -56,10 +70,7 @@ func IPFilter() gin.HandlerFunc {
 			if !isIPInList(clientIP, config.Whitelist) {
 				logger := GetLogger(c)
 				logger.WithField("client_ip", clientIP).Warn("IP 不在白名单中")
-				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-					"code":    403,
-					"message": "访问被拒绝",
-				})
+				abortWithError(c, http.StatusForbidden, 10004, i18n.T(c, "error.access_denied"))
 				return
 			}
 		}
@@ -68,10 +79,7 @@ func IPFilter() gin.HandlerFunc {
 		if isIPInList(clientIP, config.Blacklist) {
 			logger := GetLogger(c)
 			logger.WithField("client_ip", clientIP).Warn("IP 在黑名单中")
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"code":    403,
-				"message": "访问被拒绝",
-			})
+			abortWithError(c, http.StatusForbidden, 10004, i18n.T(c, "error.access_denied"))
 			return
 		}
 
@@ -94,30 +102,22 @@ func CSRFProtection() gin.HandlerFunc {
 			return
 		}
 
-		// 检查 Origin 头
 		origin := c.GetHeader("Origin")
 		referer := c.GetHeader("Referer")
 
 		if origin != "" {
-			// 验证 Origin 是否合法
-			if !isValidOrigin(origin) {
+			if !originAllowed(c.Request, origin) {
 				logger := GetLogger(c)
-				logger.WithField("origin", origin).Warn("CSRF 攻击检测：无效的 Origin")
-				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-					"code":    403,
-					"message": "CSRF 保护：无效的请求来源",
-				})
+				logger.Warn("CSRF 检查拒绝了非同源请求")
+				abortWithError(c, http.StatusForbidden, 10004, i18n.T(c, "error.invalid_origin"))
 				return
 			}
 		} else if referer != "" {
-			// 如果没有 Origin，检查 Referer
-			if !isValidReferer(referer) {
+			parsed, err := url.Parse(referer)
+			if err != nil || !originAllowed(c.Request, parsed.Scheme+"://"+parsed.Host) {
 				logger := GetLogger(c)
-				logger.WithField("referer", referer).Warn("CSRF 攻击检测：无效的 Referer")
-				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-					"code":    403,
-					"message": "CSRF 保护：无效的请求来源",
-				})
+				logger.Warn("CSRF 检查拒绝了非同源 Referer")
+				abortWithError(c, http.StatusForbidden, 10004, i18n.T(c, "error.invalid_origin"))
 				return
 			}
 		}
@@ -140,8 +140,12 @@ func XSSProtection() gin.HandlerFunc {
 			c.Header("X-Frame-Options", "DENY")
 		}
 		c.Header("X-Content-Type-Options", "nosniff")
-		c.Header("X-XSS-Protection", "1; mode=block")
-		c.Header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';")
+		c.Header(
+			"Content-Security-Policy",
+			"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "+
+				"img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; "+
+				"frame-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+		)
 
 		c.Next()
 	}
@@ -176,41 +180,4 @@ func isIPInCIDR(clientIP, cidr string) bool {
 	}
 
 	return ipNet.Contains(ip)
-}
-
-// isValidOrigin 验证 Origin 是否合法
-func isValidOrigin(origin string) bool {
-	// 这里可以根据实际需求添加更严格的验证
-	// 例如：只允许特定的域名
-	allowedOrigins := []string{
-		"http://localhost:3000",
-		"http://localhost:5173",
-		"https://yourdomain.com",
-	}
-
-	for _, allowed := range allowedOrigins {
-		if origin == allowed {
-			return true
-		}
-	}
-
-	return false
-}
-
-// isValidReferer 验证 Referer 是否合法
-func isValidReferer(referer string) bool {
-	// 这里可以根据实际需求添加更严格的验证
-	// 简单检查是否包含合法域名
-	allowedDomains := []string{
-		"localhost",
-		"yourdomain.com",
-	}
-
-	for _, domain := range allowedDomains {
-		if strings.Contains(referer, domain) {
-			return true
-		}
-	}
-
-	return false
 }

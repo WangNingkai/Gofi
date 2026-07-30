@@ -1,26 +1,37 @@
 package controller
 
 import (
+	"net/http"
+
 	"gofi/db"
 	"gofi/i18n"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-// GetGuestPermissions 查询访客权限
-func GetGuestPermissions(ctx *gin.Context) {
-	permissions, err := db.QueryGuestPermissions()
-
+func (handler *Handler) GetGuestPermissions(ctx *gin.Context) {
+	permissions, err := handler.Application.Permissions.ListGuest()
 	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusOK, NewResource().Fail().Message(i18n.T(ctx.Request.Context(), "permission.guest_query_failed")).Build())
+		WriteApplicationError(ctx, err)
 		return
 	}
-
-	ctx.JSON(http.StatusOK, NewResource().Payload(permissions).Build())
+	Success(ctx, permissions)
 }
 
-// UpdateGuestPermission 更新访客权限
-func UpdateGuestPermission(ctx *gin.Context) {
-
+func (handler *Handler) UpdateGuestPermissions(ctx *gin.Context) {
+	var permissions []db.Permission
+	if err := ctx.ShouldBindJSON(&permissions); err != nil {
+		Failure(ctx, http.StatusBadRequest, StatusInvalidRequest, i18n.T(ctx, "error.invalid_request"))
+		return
+	}
+	if err := handler.Application.Permissions.UpdateGuest(permissions); err != nil {
+		WriteApplicationError(ctx, err)
+		return
+	}
+	updated, err := handler.Application.Permissions.ListGuest()
+	if err != nil {
+		WriteApplicationError(ctx, err)
+		return
+	}
+	Success(ctx, updated)
 }

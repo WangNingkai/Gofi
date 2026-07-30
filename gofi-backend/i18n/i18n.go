@@ -5,7 +5,6 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 )
@@ -17,32 +16,29 @@ type ctxKey struct{}
 
 var (
 	translations = map[string]map[string]string{} // lang -> key -> value
-	defaultLang  = "zh-Hans"
+	defaultLang  = "zh_Hans"
 	mu           sync.RWMutex
 )
 
 // 加载所有语言包
 func LoadTranslations() error {
 	langs := []string{"zh_Hans", "en"}
+	loaded := make(map[string]map[string]string, len(langs))
 	for _, lang := range langs {
 		filename := lang + ".json"
-		log.Printf("[i18n] loading lang=%s file=%s", lang, filename)
 		data, err := i18nFS.ReadFile(filename)
 		if err != nil {
-			log.Printf("[i18n] failed to read %s: %v", filename, err)
-			return err
+			return fmt.Errorf("读取翻译文件 %s: %w", filename, err)
 		}
 		m := map[string]string{}
 		if err := json.Unmarshal(data, &m); err != nil {
-			log.Printf("[i18n] failed to unmarshal %s: %v", filename, err)
-			return err
+			return fmt.Errorf("解析翻译文件 %s: %w", filename, err)
 		}
-		log.Printf("[i18n] loaded %d keys for lang=%s", len(m), lang)
-		for k := range m {
-			log.Printf("[i18n] lang=%s key=%s", lang, k)
-		}
-		translations[lang] = m
+		loaded[lang] = m
 	}
+	mu.Lock()
+	translations = loaded
+	mu.Unlock()
 	return nil
 }
 
@@ -64,23 +60,16 @@ func T(ctx context.Context, key string, args ...interface{}) string {
 	lang := getLang(ctx)
 	mu.RLock()
 	defer mu.RUnlock()
-	var result string
 	if m, ok := translations[lang]; ok {
 		if val, ok := m[key]; ok {
-			result = fmt.Sprintf(val, args...)
-			log.Printf("[i18n] lang=%s key=%s result=%s", lang, key, result)
-			return result
+			return fmt.Sprintf(val, args...)
 		}
 	}
 	// fallback
 	if m, ok := translations[defaultLang]; ok {
 		if val, ok := m[key]; ok {
-			result = fmt.Sprintf(val, args...)
-			log.Printf("[i18n] lang=%s (fallback) key=%s result=%s", lang, key, result)
-			return result
+			return fmt.Sprintf(val, args...)
 		}
 	}
-	// key不存在
-	log.Printf("[i18n] lang=%s key=%s result=KEY_NOT_FOUND", lang, key)
 	return key
 }

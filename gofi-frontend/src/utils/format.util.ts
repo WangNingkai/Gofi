@@ -1,5 +1,3 @@
-import { UserType } from '../constants/user'
-
 export enum ByteFormat {
     /**
      * Use Base 10 (1 kB = 1000 bytes). Recommended for sizes of files on disk, disk sizes, bandwidth.
@@ -69,15 +67,4 @@ export class FormatUtil {
         return `${[year, month, day].join('-')} ${[houer, minute].join(':')}`
     }
 
-    static formatUserType(userType: number | undefined | null) {
-        if (userType !== undefined && userType !== null) {
-            switch (userType) {
-                case UserType.ADMIN:
-                    return '管理员'
-                case UserType.USER:
-                    return '用户'
-            }
-        }
-        return '未知类型'
-    }
 }

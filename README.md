@@ -12,7 +12,7 @@ Gofi is a modern, open-source web file indexer and manager, featuring a fully re
 - **Settings & File List Redesign**: Settings page and file list page are fully modernized, with improved forms, toolbars, and interaction details.
 - **Toolbar & Filtering**: File list toolbar now supports icon-based filtering, floating search, and consistent view switching.
 - **Internationalization**: Full i18n support for English and Chinese, including error messages and UI.
-- **Security & Auth**: Backend authentication and permission system refactored for JWT, context-based user info, and robust error handling.
+- **Security & Auth**: bcrypt passwords, revocable JWT sessions, centralized path isolation, guest permissions, and correct HTTP error semantics.
 - **Configurable & Extensible**: All key settings are environment-configurable. Backend and frontend are modular and easy to extend.
 - **Performance Optimizations**: Reduced redundant operations, improved database queries, and optimized logging.
 
@@ -24,35 +24,21 @@ Gofi is a modern, open-source web file indexer and manager, featuring a fully re
 
 ## 🚀 Quick Start
 
-### Recommended: One-Click Start
+Requirements: Go 1.26.5, Node.js 24.14.1 LTS, pnpm 10.34.5, GNU Make, and a C compiler.
+
+### Install and start
 
 ```bash
-# Start backend
-./backend.sh
-
-# Start frontend
-./frontend.sh
+make install
+make dev
 ```
 
-### Build All (optional)
+### Check and build
 
 ```bash
-make
-```
-
-### Manual Start (alternative)
-
-#### Backend
-```bash
-cd gofi-backend
-go run main.go
-```
-
-#### Frontend
-```bash
-cd gofi-frontend
-pnpm install
-pnpm dev
+make check
+make build
+make smoke
 ```
 
 Visit: http://localhost:3000
@@ -61,10 +47,13 @@ Visit: http://localhost:3000
 
 Backend config via environment variables, e.g.:
 ```bash
-export GOFI_JWT_SECRET="your-secret-key"
+export GOFI_JWT_SECRET="a-random-secret-with-at-least-32-characters"
 export GOFI_JWT_EXPIRE_HOURS="168"
+export GOFI_ALLOWED_ORIGINS="https://files.example.com"
 export GOFI_ENABLE_DEBUG="false"
 ```
+
+`GOFI_JWT_SECRET` is optional. Gofi generates `.gofi-jwt-secret` when it is absent; persist it with the database and storage directory. During first-time setup, choose an administrator account and a password of at least 10 characters. There are no default administrator credentials.
 
 ## 📝 Documentation
 

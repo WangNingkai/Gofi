@@ -1,9 +1,9 @@
 import { useAtomValue, useSetAtom } from 'jotai'
 import useSWR from 'swr'
-import { fetchUser } from '../api/repository'
-import { TOKEN } from '../constants/storage'
+import { fetchCurrentUser } from '@/features/auth/api'
 import QueryKey from '../constants/swr'
 import { tokenState } from '../states/common.state'
+import { clearSessionToken } from '@/features/auth/session'
 
 export function useCurrentUser() {
     const setToken = useSetAtom(tokenState)
@@ -13,12 +13,10 @@ export function useCurrentUser() {
         error,
         mutate,
         isLoading,
-    } = useSWR(token ? [QueryKey.CURRENT_USER, token] : null, () => fetchUser(), {
-        onError: (error: any) => {
-            // 清除token状态
+    } = useSWR(token ? [QueryKey.CURRENT_USER, token] : null, fetchCurrentUser, {
+        onError: () => {
             setToken(null)
-            // 清除session存储
-            sessionStorage.removeItem(TOKEN)
+            clearSessionToken()
         },
     })
 

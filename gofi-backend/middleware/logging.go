@@ -1,22 +1,10 @@
 package middleware
 
 import (
-	"bytes"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
-
-// responseWriter 包装gin.ResponseWriter以捕获响应内容
-type responseWriter struct {
-	gin.ResponseWriter
-	body *bytes.Buffer
-}
-
-func (w responseWriter) Write(b []byte) (int, error) {
-	w.body.Write(b)
-	return w.ResponseWriter.Write(b)
-}
 
 // LoggingMiddleware 记录请求日志
 func LoggingMiddleware() gin.HandlerFunc {
@@ -50,8 +38,8 @@ func LoggingMiddleware() gin.HandlerFunc {
 	}
 }
 
-// LoggingMiddlewareWithBody 记录请求日志（包含请求体）
-func LoggingMiddlewareWithBody() gin.HandlerFunc {
+// LoggingMiddlewareWithDetails 记录不包含请求体、Cookie 或认证头的附加请求信息。
+func LoggingMiddlewareWithDetails() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		path := c.Request.URL.Path

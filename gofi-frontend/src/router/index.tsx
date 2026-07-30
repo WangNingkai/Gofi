@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react'
 import { BrowserRouter, useRoutes } from 'react-router-dom'
 import useSWR from 'swr'
-import { fetchConfiguration } from '../api/repository'
+import { fetchConfiguration } from '@/features/configuration/api'
 import PageLoading from '../components/PageLoading'
 import QueryKey from '../constants/swr'
 import { appRoutes, setupRoutes } from './routes'

@@ -5,39 +5,29 @@ import (
 
 	"gofi/tool"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestJWTGeneration(t *testing.T) {
-	// 测试JWT生成
-	userID := int64(1)
-	username := "testuser"
-	roleType := 1
+	token, err := tool.GenerateJWT(1, "testuser", 1, 3)
+	require.NoError(t, err)
+	require.NotEmpty(t, token)
 
-	token, err := tool.GenerateJWT(userID, username, roleType)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, token)
-
-	// 测试JWT解析
-	parsedUserID, err := tool.ParseUserIdFromJWTString(token)
-	assert.NoError(t, err)
-	assert.Equal(t, userID, parsedUserID)
+	claims, err := tool.ParseJWTString(token)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), claims.UserId)
+	require.Equal(t, int64(3), claims.TokenVersion)
 }
 
-func TestMD5Hash(t *testing.T) {
-	// 测试MD5哈希
-	password := "testpassword"
-	hashed := tool.MD5(password)
+func TestPasswordHash(t *testing.T) {
+	hash, err := tool.HashPassword("a-secure-password")
+	require.NoError(t, err)
+	require.NotContains(t, hash, "a-secure-password")
 
-	// 验证哈希不为空且长度正确
-	assert.NotEmpty(t, hashed)
-	assert.Len(t, hashed, 32) // MD5 哈希长度为32位
+	valid, needsUpgrade := tool.VerifyPassword(hash, "a-secure-password")
+	require.True(t, valid)
+	require.False(t, needsUpgrade)
 
-	// 验证相同输入产生相同哈希
-	hashed2 := tool.MD5(password)
-	assert.Equal(t, hashed, hashed2)
-
-	// 验证不同输入产生不同哈希
-	hashed3 := tool.MD5("differentpassword")
-	assert.NotEqual(t, hashed, hashed3)
+	valid, _ = tool.VerifyPassword(hash, "wrong-password")
+	require.False(t, valid)
 }

@@ -2,7 +2,8 @@ import { MdFileDownload } from 'react-icons/md'
 import { RiFolder3Line, RiLoader2Line } from 'react-icons/ri'
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import repo, { FileInfo } from '../api/repository'
+import { getFileDownloadUrl } from '@/features/files/api'
+import type { FileInfo } from '@/features/files/types'
 import i18n from '../i18n'
 import { FormatUtil } from '../utils/format.util'
 import MimeTypeUtil from '../utils/mimetype.util'
@@ -38,7 +39,7 @@ const LIST_HEADER = (
                 {i18n.t('common.last-modified')}
             </th>
             <th scope="col" className="relative px-6 py-3">
-                <span className="sr-only">Edit</span>
+                <span className="sr-only">{i18n.t('common.actions')}</span>
             </th>
         </tr>
     </thead>
@@ -130,7 +131,7 @@ const List: React.FC<IProps> = ({ items, pageSize, onFileNameClick, emptyView, l
                     {/* Actions */}
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium cursor-pointer">
                         <a
-                            href={repo.getFileDownloadUrl(item.path)}
+                            href={getFileDownloadUrl(item.path)}
                             className="transition-all text-gray-500 hover:text-gray-900"
                         >
                             <TooltipProvider>
@@ -181,7 +182,7 @@ const List: React.FC<IProps> = ({ items, pageSize, onFileNameClick, emptyView, l
                             ) : (
                                 <div className="flex flex-col items-center justify-center space-y-4 p-6">
                                     <RiLoader2Line className="animate-spin-slow" />
-                                    <div>加载中</div>
+                                    <div>{t('common.loading')}</div>
                                 </div>
                             )}
                         </div>

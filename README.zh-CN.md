@@ -12,7 +12,7 @@ Gofi 是一款现代化、开源的 Web 文件索引与管理器，前后端全�
 - **设置页与文件列表重构**：设置页与文件列表页全面现代化，表单、工具栏、交互细节大幅优化。
 - **工具栏与过滤**：文件列表工具栏支持图标化过滤、悬浮搜索、视图切换，风格统一。
 - **国际化支持**：全局支持中英文切换，错误消息与界面均可本地化。
-- **安全与鉴权**：后端鉴权与权限系统重构，采用 JWT、上下文用户信息、统一错误处理。
+- **安全与鉴权**：使用 bcrypt、可撤销 JWT、集中路径隔离、访客权限和真实 HTTP 错误语义。
 - **配置灵活可扩展**：所有核心配置均可通过环境变量设置，前后端模块化，易于二次开发。
 - **性能优化**：减少冗余操作，优化数据库查询与日志，提升整体性能。
 
@@ -24,35 +24,21 @@ Gofi 是一款现代化、开源的 Web 文件索引与管理器，前后端全�
 
 ## 🚀 快速开始
 
-### 推荐：一键启动
+环境要求：Go 1.26.5、Node.js 24.14.1 LTS、pnpm 10.34.5、GNU Make 和 C 编译器。
+
+### 安装依赖并启动
 
 ```bash
-# 启动后端
-./backend.sh
-
-# 启动前端
-./frontend.sh
+make install
+make dev
 ```
 
-### 一键构建（可选）
+### 检查与构建
 
 ```bash
-make
-```
-
-### 手动启动（可选）
-
-#### 后端
-```bash
-cd gofi-backend
-go run main.go
-```
-
-#### 前端
-```bash
-cd gofi-frontend
-pnpm install
-pnpm dev
+make check
+make build
+make smoke
 ```
 
 访问：http://localhost:3000
@@ -61,10 +47,13 @@ pnpm dev
 
 后端通过环境变量配置，例如：
 ```bash
-export GOFI_JWT_SECRET="your-secret-key"
+export GOFI_JWT_SECRET="至少三十二个字符的随机密钥"
 export GOFI_JWT_EXPIRE_HOURS="168"
+export GOFI_ALLOWED_ORIGINS="https://files.example.com"
 export GOFI_ENABLE_DEBUG="false"
 ```
+
+`GOFI_JWT_SECRET` 可以省略；应用会自动生成 `.gofi-jwt-secret`。该文件需要与数据库和存储目录一起持久化。首次初始化由用户自行设置管理员账号和至少 10 位的密码，不存在默认管理员凭据。
 
 ## 📄 文档
 

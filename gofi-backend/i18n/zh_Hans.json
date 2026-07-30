@@ -20,5 +20,16 @@
   "error.directory_not_exist": "目录不存在: %s",
   "error.not_directory": "路径不是目录: %s",
   "error.already_initialized": "系统已初始化，请勿重复操作",
-  "error.param_parse_failed": "参数解析失败: %s"
-} 
+  "error.param_parse_failed": "参数解析失败: %s",
+  "auth.not_authorized": "身份凭据无效或已过期",
+  "auth.insufficient_permissions": "权限不足",
+  "error.conflict": "资源状态冲突",
+  "error.not_initialized": "系统尚未初始化",
+  "error.not_found": "资源不存在",
+  "error.invalid_origin": "请求来源无效",
+  "error.access_denied": "访问被拒绝",
+  "error.too_many_requests": "请求过于频繁，请稍后重试",
+  "error.global_panic": "请求处理发生异常",
+  "error.api_warn": "请求处理失败",
+  "success.logout": "退出成功"
+}

@@ -1,9 +1,11 @@
 import React from 'react'
 import useSWR from 'swr'
-import { fetchConfiguration } from '../api/repository'
+import { fetchConfiguration } from '@/features/configuration/api'
 import QueryKey from '../constants/swr'
+import { useTranslation } from 'react-i18next'
 
 const Footer: React.FC = () => {
+    const { t } = useTranslation()
     const { data: config } = useSWR(QueryKey.CONFIG, () => fetchConfiguration())
 
     return (
@@ -17,7 +19,7 @@ const Footer: React.FC = () => {
                                 className="transition-colors underline-offset-4 hover:text-primary hover:underline"
                                 target="_blank" rel="noopener noreferrer"
                             >
-                                Github
+                                GitHub
                             </a>
                         </li>
                         <li>
@@ -26,13 +28,13 @@ const Footer: React.FC = () => {
                                 className="transition-colors underline-offset-4 hover:text-primary hover:underline"
                                 target="_blank" rel="noopener noreferrer"
                             >
-                                About
+                                {t('component.footer.about')}
                             </a>
                         </li>
                     </ul>
                 </nav>
                 <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
-                    <span>version {config?.version}</span>
+                    <span>{t('component.footer.version', { version: config?.version })}</span>
                     <span aria-hidden="true">·</span>
                     <span>© 2019-present</span>
                 </div>

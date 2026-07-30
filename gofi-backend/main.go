@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"gofi/application"
 	"gofi/boot"
 	"gofi/controller"
 	"gofi/db"
@@ -9,6 +11,8 @@ import (
 	"gofi/middleware"
 	"gofi/tool"
 	"net/http"
+	"strings"
+	"time"
 
 	"gofi/i18n"
 	"log"
@@ -17,22 +21,55 @@ import (
 	"golang.org/x/time/rate"
 )
 
-func init() {
-	extension.BindAdditionalType()
-	boot.ParseArguments()
-}
-
 func main() {
+	boot.ParseArguments()
+
 	if err := i18n.LoadTranslations(); err != nil {
 		log.Fatalf("failed to load i18n translations: %v", err)
 	}
-	// 记录应用启动日志
-	tool.LogStartup(boot.GetArguments().Port, string(env.Current()), db.ObtainConfiguration().Version)
+	app, err := createApp()
+	if err != nil {
+		log.Fatalf("Gofi 初始化失败: %v", err)
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			tool.WithError(err).Error("关闭数据库失败")
+		}
+	}()
+	tool.LogStartup(boot.GetArguments().Port, string(env.Current()), db.Version())
 
-	app := gin.Default()
+	tool.Info("Gofi服务器开始监听端口:", boot.GetArguments().Port)
+	if err := app.Run(":" + boot.GetArguments().Port); err != nil {
+		log.Fatalf("Gofi服务器启动失败: %v", err)
+	}
+}
+
+func createApp() (*gin.Engine, error) {
+	configureGinMode()
+	extension.BindAdditionalType()
+	if err := env.EnsureJWTSecret(); err != nil {
+		return nil, err
+	}
+
+	dataSourceName := tool.GetDatabaseFilePath()
+	if env.IsTest() {
+		dataSourceName = "file:gofi-test?mode=memory&cache=shared"
+	}
+	if err := db.Open(dataSourceName, env.IsDevelop() && !env.IsTest()); err != nil {
+		return nil, err
+	}
+	runtimeConfiguration := env.GetConfiguration()
+	core := application.New(db.Engine(), runtimeConfiguration)
+	handler := controller.NewHandler(core)
+
+	app := gin.New()
+	if err := app.SetTrustedProxies(runtimeConfiguration.TrustedProxies); err != nil {
+		return nil, fmt.Errorf("configure trusted proxies: %w", err)
+	}
 
 	// 注册全局中间件
 	globalMiddlewares := []gin.HandlerFunc{
+		gin.Recovery(),
 		middleware.ErrorHandler(),
 		middleware.TraceMiddleware(),
 		middleware.IPFilter(),
@@ -43,7 +80,7 @@ func main() {
 	// 添加日志中间件
 	config := env.GetConfiguration()
 	if config.EnableDebug {
-		app.Use(middleware.LoggingMiddlewareWithBody())
+		app.Use(middleware.LoggingMiddlewareWithDetails())
 	} else {
 		app.Use(middleware.LoggingMiddleware())
 	}
@@ -52,12 +89,6 @@ func main() {
 	if env.IsPreview() {
 		app.Use(middleware.PerIPRateLimiter(rate.Limit(10), 20))
 		// tool.Info(i18n.T(ctx, "main.preview_mode_enabled"), config.MaxRequestsPerMinute, i18n.T(ctx, "main.times_per_minute"))
-	} else if env.IsProduct() {
-		gin.SetMode(gin.ReleaseMode)
-		// tool.Info(i18n.T(ctx, "main.production_mode_enabled"))
-	} else if env.IsDevelop() {
-		gin.SetMode(gin.DebugMode)
-		// tool.Info(i18n.T(ctx, "main.development_mode_enabled"))
 	}
 
 	app.Use(middleware.CORS)
@@ -67,9 +98,25 @@ func main() {
 		app.Use(middleware.StaticFS("/", "dist", env.EmbedStaticAssets))
 
 		app.NoRoute(func(context *gin.Context) {
+			if strings.HasPrefix(context.Request.URL.Path, "/api/") ||
+				context.Request.URL.Path == "/api" {
+				controller.Failure(
+					context,
+					http.StatusNotFound,
+					controller.StatusNotFound,
+					i18n.T(context, "error.not_found"),
+				)
+				return
+			}
 			indexBytes, err := env.EmbedStaticAssets.ReadFile("dist/index.html")
 			if err != nil {
-				// tool.WithError(err).Fatal(i18n.T(ctx, "main.read_static_failed"))
+				controller.Failure(
+					context,
+					http.StatusInternalServerError,
+					controller.StatusInternal,
+					i18n.T(context, "error.internal"),
+				)
+				return
 			}
 			context.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 			context.String(http.StatusOK, string(indexBytes))
@@ -77,49 +124,73 @@ func main() {
 	}
 
 	// 注册API路由（CSRF保护）
-	registerAPIRoutes(app)
+	registerAPIRoutes(app, handler)
 
-	tool.Info("Gofi服务器启动完成，监听端口:", boot.GetArguments().Port)
+	return app, nil
+}
 
-	err := app.Run(":" + boot.GetArguments().Port)
-	if err != nil {
-		// tool.WithError(err).Fatal(i18n.T(ctx, "main.server_start_failed"))
+func configureGinMode() {
+	if env.IsTest() {
+		gin.SetMode(gin.TestMode)
+		return
 	}
+	if env.IsProduct() || env.IsPreview() {
+		gin.SetMode(gin.ReleaseMode)
+		return
+	}
+	gin.SetMode(gin.DebugMode)
 }
 
 // registerAPIRoutes 注册API路由
-func registerAPIRoutes(app *gin.Engine) {
+func registerAPIRoutes(app *gin.Engine, handler *controller.Handler) {
+	authentication := handler.Application.Authentication
+	optionalAuth := middleware.OptionalAuth(authentication)
+	requireAuth := middleware.RequireAuth(authentication)
+	requireAdmin := middleware.RequireAdmin(authentication)
+
 	api := app.Group("/api")
 	{
+		if env.GetConfiguration().EnableRateLimit {
+			maxRequests := env.GetConfiguration().MaxRequestsPerMinute
+			api.Use(middleware.PerIPRateLimiter(
+				rate.Every(time.Minute/time.Duration(maxRequests)),
+				maxRequests,
+			))
+		}
+
 		// 基础配置路由
-		api.GET("/configuration", controller.GetConfiguration)
-		api.POST("/configuration", middleware.AuthChecker, middleware.CSRFProtection(), controller.UpdateConfiguration)
-		api.POST("/setup", controller.Setup)
+		api.GET("/configuration", handler.GetConfiguration)
+		api.POST("/setup", middleware.CSRFProtection(), handler.Setup)
+		api.GET("/configuration/details", requireAdmin, handler.GetAdminConfiguration)
+		api.POST("/configuration", requireAdmin, middleware.CSRFProtection(), handler.UpdateConfiguration)
 
 		// 文件操作路由
-		api.GET("/file", controller.FetchFile)
-		api.GET("/download", controller.Download)
-		api.HEAD("/download", controller.Download)
-		api.POST("/upload", middleware.AuthChecker, middleware.CSRFProtection(), controller.Upload)
-		api.POST("/upload/init", middleware.AuthChecker, middleware.CSRFProtection(), controller.UploadInit)
-		api.POST("/upload/chunk", middleware.AuthChecker, middleware.CSRFProtection(), controller.UploadChunk)
-		api.POST("/upload/complete", middleware.AuthChecker, middleware.CSRFProtection(), controller.UploadComplete)
-		api.DELETE("/file", middleware.AuthChecker, middleware.CSRFProtection(), controller.DeleteFile)
+		api.GET("/file", optionalAuth, handler.FetchFile)
+		api.GET("/download", optionalAuth, handler.Download)
+		api.HEAD("/download", optionalAuth, handler.Download)
+		api.POST("/upload", optionalAuth, middleware.CSRFProtection(), handler.Upload)
+		api.DELETE("/file", optionalAuth, middleware.CSRFProtection(), handler.DeleteFile)
 
 		// 用户相关路由
 		user := api.Group("/user")
 		{
-			user.GET("", middleware.AuthChecker, controller.GetUser)
-			user.POST("/login", controller.Login)
-			user.POST("/logout", middleware.AuthChecker, middleware.CSRFProtection(), controller.Logout)
-			user.POST("/changePassword", middleware.AuthChecker, middleware.CSRFProtection(), controller.ChangePassword)
+			loginHandlers := []gin.HandlerFunc{middleware.CSRFProtection(), handler.Login}
+			if env.GetConfiguration().EnableRateLimit {
+				loginHandlers = append([]gin.HandlerFunc{
+					middleware.PerIPRateLimiter(rate.Every(time.Minute/5), 5),
+				}, loginHandlers...)
+			}
+			user.POST("/login", loginHandlers...)
+			user.GET("", requireAuth, handler.GetUser)
+			user.POST("/logout", requireAuth, middleware.CSRFProtection(), handler.Logout)
+			user.POST("/changePassword", requireAuth, middleware.CSRFProtection(), handler.ChangePassword)
 		}
 
 		// 权限管理路由
-		permission := api.Group("/permission", middleware.AdminChecker)
+		permission := api.Group("/permission")
 		{
-			permission.GET("/guest", controller.GetGuestPermissions)
-			permission.POST("/guest", middleware.CSRFProtection(), controller.UpdateGuestPermission)
+			permission.GET("/guest", handler.GetGuestPermissions)
+			permission.POST("/guest", requireAdmin, middleware.CSRFProtection(), handler.UpdateGuestPermissions)
 		}
 	}
 }

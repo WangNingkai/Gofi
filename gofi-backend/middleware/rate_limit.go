@@ -1,35 +1,46 @@
 package middleware
 
 import (
+	"gofi/i18n"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
 )
 
-// RateLimiter returns a middleware that limits the request rate.
-func RateLimiter(r rate.Limit, b int) gin.HandlerFunc {
-	limiter := rate.NewLimiter(r, b)
-	return func(c *gin.Context) {
-		if !limiter.Allow() {
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"error": "too many requests"})
-			return
-		}
-		c.Next()
-	}
-}
-
 // PerIPRateLimiter returns a middleware that limits the request rate on a per-IP basis.
 func PerIPRateLimiter(r rate.Limit, b int) gin.HandlerFunc {
-	limiters := make(map[string]*rate.Limiter)
+	type visitor struct {
+		limiter  *rate.Limiter
+		lastSeen time.Time
+	}
+	var mutex sync.Mutex
+	limiters := make(map[string]*visitor)
+	requests := 0
 	return func(c *gin.Context) {
-		limiter, exists := limiters[c.ClientIP()]
+		now := time.Now()
+		clientIP := c.ClientIP()
+		mutex.Lock()
+		current, exists := limiters[clientIP]
 		if !exists {
-			limiter = rate.NewLimiter(r, b)
-			limiters[c.ClientIP()] = limiter
+			current = &visitor{limiter: rate.NewLimiter(r, b)}
+			limiters[clientIP] = current
 		}
-		if !limiter.Allow() {
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"error": "too many requests"})
+		current.lastSeen = now
+		requests++
+		if requests%1000 == 0 {
+			for ip, item := range limiters {
+				if now.Sub(item.lastSeen) > time.Hour {
+					delete(limiters, ip)
+				}
+			}
+		}
+		allowed := current.limiter.Allow()
+		mutex.Unlock()
+		if !allowed {
+			abortWithError(c, http.StatusTooManyRequests, 40001, i18n.T(c, "error.too_many_requests"))
 			return
 		}
 		c.Next()

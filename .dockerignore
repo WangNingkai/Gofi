@@ -1,0 +1,13 @@
+.git
+.github
+.gofi-work
+.vscode
+node_modules
+gofi-frontend/node_modules
+gofi-frontend/dist
+gofi-backend/env/dist
+output
+preview
+*.db
+*.log
+**/.gofi-jwt-secret

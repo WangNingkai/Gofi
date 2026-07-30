@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-//Mode 模式
+// Mode 模式
 type Mode string
 
 const (
@@ -35,8 +35,12 @@ func Current() Mode {
 
 // IsTest 当前是否测试环境
 func IsTest() bool {
+	if strings.HasSuffix(os.Args[0], ".test") {
+		return true
+	}
+
 	for _, value := range os.Args {
-		if strings.Contains(value, "-test.v") {
+		if strings.HasPrefix(value, "-test.") {
 			return true
 		}
 	}

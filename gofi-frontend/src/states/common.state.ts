@@ -1,9 +1,10 @@
 import { atom } from 'jotai'
-import { LANGUAGE, TOKEN, THEME } from '../constants/storage'
+import { LANGUAGE, THEME } from '../constants/storage'
 import i18n from '../i18n'
 import LanguageUtil from '../utils/language.util'
+import { readSessionToken } from '@/features/auth/session'
 
-export const tokenState = atom<string | null>(sessionStorage.getItem(TOKEN))
+export const tokenState = atom<string | null>(readSessionToken())
 
 // 创建基础的语言状态 atom
 const baseLanguageState = atom<string>(

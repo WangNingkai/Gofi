@@ -3,7 +3,8 @@ import React, { lazy, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 import useSWR from 'swr'
-import repo, { DirectoryData, FileData, FileInfo } from '../../api/repository'
+import { fetchFile, getFileDownloadUrl, getFilePreviewUrl } from '@/features/files/api'
+import type { DirectoryData, FileData, FileInfo } from '@/features/files/types'
 import FileIconComponent from '../../components/FileIcon'
 import LogoLoading from '../../components/LogoLoading'
 import MainLayout from '../../components/layouts/MainLayout/Index'
@@ -14,6 +15,7 @@ import { FormatUtil } from '../../utils/format.util'
 import MimeTypeUtil, { PreviewableFileType } from '../../utils/mimetype.util'
 import PathUtil from '../../utils/path.util'
 import Files from './Files'
+import { useAccessCapabilities } from '../../features/permissions/useAccessCapabilities'
 
 const TextViewer = lazy(() => import('../../components/viewer/TextViewer'))
 const AudioViewer = lazy(() => import('../../components/viewer/AudioViewer'))
@@ -53,6 +55,7 @@ const File: React.FC<FileProps> = ({ fileData }) => {
         index: number
     } | null>(null)
     const { t } = useTranslation()
+    const { capabilities } = useAccessCapabilities()
 
     const pathQuery = () => {
         return PathUtil.extractPathFromUrl(location.pathname)
@@ -62,7 +65,7 @@ const File: React.FC<FileProps> = ({ fileData }) => {
     const { data: fileResponse, error } = useSWR(
         pathQuery() ? [QueryKey.FILE_DETAIL, pathQuery()] : null,
         async ([, path]) => {
-            return await repo.fetchFile(path)
+            return fetchFile(path)
         },
     )
 
@@ -77,7 +80,7 @@ const File: React.FC<FileProps> = ({ fileData }) => {
             <div className="flex flex-col items-center justify-center py-16">
                 <LogoLoading className="mb-4" />
                 <div className="text-center mt-2">
-                    <span className="text-sm text-muted-foreground font-medium">加载文件信息...</span>
+                    <span className="text-sm text-muted-foreground font-medium">{t('common.loading')}</span>
                 </div>
             </div>
         )
@@ -89,9 +92,9 @@ const File: React.FC<FileProps> = ({ fileData }) => {
             <MainLayout>
                 <div className="flex flex-col items-center justify-center py-16">
                     <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-                    <h2 className="text-xl font-semibold mb-2">文件不存在</h2>
-                    <p className="text-muted-foreground mb-4">请求的文件路径不存在或无法访问</p>
-                    <Button onClick={() => navigate('/file')}>返回文件列表</Button>
+                    <h2 className="text-xl font-semibold mb-2">{t('pages.file-preview.file-not-found.title')}</h2>
+                    <p className="text-muted-foreground mb-4">{t('pages.file-preview.file-not-found.description')}</p>
+                    <Button onClick={() => navigate('/file')}>{t('component.viewer.toolbar.return')}</Button>
                 </div>
             </MainLayout>
         )
@@ -103,9 +106,9 @@ const File: React.FC<FileProps> = ({ fileData }) => {
             <MainLayout>
                 <div className="flex flex-col items-center justify-center py-16">
                     <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-                    <h2 className="text-xl font-semibold mb-2">无效的文件类型</h2>
-                    <p className="text-muted-foreground mb-4">请求的路径不是文件</p>
-                    <Button onClick={() => navigate('/file')}>返回文件列表</Button>
+                    <h2 className="text-xl font-semibold mb-2">{t('pages.file-preview.file-not-found.title')}</h2>
+                    <p className="text-muted-foreground mb-4">{t('pages.file-preview.file-not-found.description')}</p>
+                    <Button onClick={() => navigate('/file')}>{t('component.viewer.toolbar.return')}</Button>
                 </div>
             </MainLayout>
         )
@@ -132,7 +135,7 @@ const File: React.FC<FileProps> = ({ fileData }) => {
             ? [QueryKey.FILE_LIST, getDirectoryPath(currentFileInfo)]
             : null,
         async ([, dirPath]) => {
-            const response = await repo.fetchFile(dirPath)
+            const response = await fetchFile(dirPath)
             if (response.type === 'directory') {
                 return (response.data as DirectoryData).files
             }
@@ -158,7 +161,7 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                 const url = new URL(stateData.imageList[stateData.currentIndex])
                 const pathParam = url.searchParams.get('path')
                 if (pathParam) {
-                    setDownloadUrl(repo.getFileDownloadUrl(pathParam))
+                    setDownloadUrl(getFileDownloadUrl(pathParam))
                 }
 
                 // 保存原始图片信息
@@ -177,7 +180,7 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                 (file) => !file.isDirectory && MimeTypeUtil.previewableTypeOf(file.extension, file.mime) === 'image',
             )
 
-            const imageUrls = imageFiles.map((file) => repo.getFilePreviewUrl(file.path))
+            const imageUrls = imageFiles.map((file) => getFilePreviewUrl(file.path))
             setImageList(imageUrls)
 
             // 找到当前图片在列表中的索引
@@ -193,7 +196,7 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                 const url = new URL(imageUrls[finalIndex])
                 const pathParam = url.searchParams.get('path')
                 if (pathParam) {
-                    setDownloadUrl(repo.getFileDownloadUrl(pathParam))
+                    setDownloadUrl(getFileDownloadUrl(pathParam))
                 }
 
                 // 保存原始图片信息
@@ -217,13 +220,6 @@ const File: React.FC<FileProps> = ({ fileData }) => {
             const hasContent = currentFileInfo.content !== undefined
             const backendFileType = currentFileInfo.fileType
 
-            console.log('[File] 根据扩展名/MIME判断预览类型:', {
-                extension,
-                mime,
-                hasContent,
-                backendFileType,
-            })
-
             let result: PreviewableFileType | null = null
 
             if (hasContent) {
@@ -234,18 +230,17 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                 result = MimeTypeUtil.previewableTypeOf(extension, mime)
             }
 
-            console.log('[File] 最终预览类型:', result)
             setPreviewableFileType(result)
 
             // 设置下载URL
-            setDownloadUrl(repo.getFileDownloadUrl(currentFileInfo.path))
+            setDownloadUrl(getFileDownloadUrl(currentFileInfo.path))
 
             // 如果是图片，处理图片列表
             if (result === 'image') {
                 processImageList(currentFileInfo)
             } else {
                 // 非图片文件设置预览URL
-                setPreviewUrl(repo.getFilePreviewUrl(currentFileInfo.path))
+                setPreviewUrl(getFilePreviewUrl(currentFileInfo.path))
             }
         }
     }, [currentFileInfo])
@@ -268,7 +263,7 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                 const url = new URL(imageList[newIndex])
                 const pathParam = url.searchParams.get('path')
                 if (pathParam) {
-                    setDownloadUrl(repo.getFileDownloadUrl(pathParam))
+                    setDownloadUrl(getFileDownloadUrl(pathParam))
                 }
 
                 // 更新原始图片信息
@@ -343,16 +338,32 @@ const File: React.FC<FileProps> = ({ fileData }) => {
 
     // 渲染文件预览组件
     const renderFilePreview = () => {
+        const requiresDownload =
+            previewableFileType !== 'text' || Boolean(fileInfo && fileInfo.size > 0 && !fileInfo.content)
+        const onDownload = capabilities.download ? () => window.open(downloadUrl, '_blank') : undefined
+        const onNewWindow = capabilities.download ? () => window.open(previewUrl, '_blank') : undefined
+
+        if (requiresDownload && !capabilities.download) {
+            return (
+                <div className="flex flex-col items-center justify-center py-16">
+                    <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
+                    <h2 className="text-xl font-semibold mb-2">{t('pages.exception.403.title')}</h2>
+                    <p className="text-muted-foreground">{t('pages.exception.403.description')}</p>
+                </div>
+            )
+        }
         if (!fileInfo || !previewableFileType) {
             return (
                 <div className="flex flex-col items-center justify-center py-16">
                     <FileIcon className="h-12 w-12 text-muted-foreground mb-4" />
                     <h2 className="text-xl font-semibold mb-2">{t('pages.file-preview.no-preview.title')}</h2>
                     <p className="text-muted-foreground mb-4">{t('pages.file-preview.no-preview.description')}</p>
-                    <Button onClick={() => window.open(downloadUrl, '_blank')}>
-                        <Download className="h-4 w-4 mr-2" />
-                        {t('common.download')}
-                    </Button>
+                    {onDownload && (
+                        <Button onClick={onDownload}>
+                            <Download className="h-4 w-4 mr-2" />
+                            {t('common.download')}
+                        </Button>
+                    )}
                 </div>
             )
         }
@@ -371,8 +382,8 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                         }}
                         currentPath={currentPath}
                         onReturn={() => navigate(PathUtil.buildFileUrl(PathUtil.parentPath(currentPath)))}
-                        onDownload={() => window.open(downloadUrl, '_blank')}
-                        onNewWindow={() => window.open(previewUrl, '_blank')}
+                        onDownload={onDownload}
+                        onNewWindow={onNewWindow}
                     />
                 )
             case 'image':
@@ -382,8 +393,8 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                         imageList={imageList}
                         currentIndex={currentImageIndex}
                         onNavigate={handleImageChange}
-                        onDownload={() => window.open(downloadUrl, '_blank')}
-                        onNewWindow={() => window.open(previewUrl, '_blank')}
+                        onDownload={onDownload}
+                        onNewWindow={onNewWindow}
                         onReturn={() => navigate(PathUtil.buildFileUrl(PathUtil.parentPath(currentPath)))}
                         currentPath={currentPath}
                         onNavigateBreadcrumb={(path) => navigate(PathUtil.buildFileUrl(path))}
@@ -397,8 +408,8 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                         url={previewUrl}
                         currentPath={currentPath}
                         onReturn={() => navigate(PathUtil.buildFileUrl(PathUtil.parentPath(currentPath)))}
-                        onDownload={() => window.open(downloadUrl, '_blank')}
-                        onNewWindow={() => window.open(previewUrl, '_blank')}
+                        onDownload={onDownload}
+                        onNewWindow={onNewWindow}
                     />
                 )
             case 'video':
@@ -407,8 +418,8 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                         url={previewUrl}
                         currentPath={currentPath}
                         onReturn={() => navigate(PathUtil.buildFileUrl(PathUtil.parentPath(currentPath)))}
-                        onDownload={() => window.open(downloadUrl, '_blank')}
-                        onNewWindow={() => window.open(previewUrl, '_blank')}
+                        onDownload={onDownload}
+                        onNewWindow={onNewWindow}
                     />
                 )
             case 'audio':
@@ -417,8 +428,8 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                         url={previewUrl}
                         currentPath={currentPath}
                         onReturn={() => navigate(PathUtil.buildFileUrl(PathUtil.parentPath(currentPath)))}
-                        onDownload={() => window.open(downloadUrl, '_blank')}
-                        onNewWindow={() => window.open(previewUrl, '_blank')}
+                        onDownload={onDownload}
+                        onNewWindow={onNewWindow}
                     />
                 )
             default:
@@ -427,10 +438,12 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                         <FileIcon className="h-12 w-12 text-muted-foreground mb-4" />
                         <h2 className="text-xl font-semibold mb-2">{t('pages.file-preview.no-preview.title')}</h2>
                         <p className="text-muted-foreground mb-4">{t('pages.file-preview.no-preview.description')}</p>
-                        <Button onClick={() => window.open(downloadUrl, '_blank')}>
-                            <Download className="h-4 w-4 mr-2" />
-                            {t('common.download')}
-                        </Button>
+                        {onDownload && (
+                            <Button onClick={onDownload}>
+                                <Download className="h-4 w-4 mr-2" />
+                                {t('common.download')}
+                            </Button>
+                        )}
                     </div>
                 )
         }

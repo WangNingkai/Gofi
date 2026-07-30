@@ -2,6 +2,7 @@ package tool
 
 import (
 	"crypto/md5"
+	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
 	"gofi/env"
@@ -9,14 +10,17 @@ import (
 
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // getJWTSecret 获取JWT密钥
-func getJWTSecret() string {
+func getJWTSecret() (string, error) {
+	if err := env.EnsureJWTSecret(); err != nil {
+		return "", err
+	}
 	config := env.GetConfiguration()
-	return config.JWTSecret
+	return config.JWTSecret, nil
 }
 
 // getJWTExpireHours 获取JWT过期时间
@@ -25,27 +29,59 @@ func getJWTExpireHours() int {
 	return config.JWTExpireHours
 }
 
-// MD5 生成32位MD5
-func MD5(text string) string {
+func legacyMD5(text string) string {
 	ctx := md5.New()
 	ctx.Write([]byte(text))
 	return hex.EncodeToString(ctx.Sum(nil))
 }
 
+func HashPassword(password string) (string, error) {
+	if len(password) < 10 {
+		return "", fmt.Errorf("password must contain at least 10 characters")
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", fmt.Errorf("hash password: %w", err)
+	}
+	return string(hash), nil
+}
+
+// VerifyPassword 支持读取旧 MD5 值；needsUpgrade 为 true 时调用方应立即写回 bcrypt。
+func VerifyPassword(encoded, password string) (valid bool, needsUpgrade bool) {
+	if strings.HasPrefix(encoded, "$2") {
+		return bcrypt.CompareHashAndPassword([]byte(encoded), []byte(password)) == nil, false
+	}
+	if len(encoded) == md5.Size*2 {
+		expected := legacyMD5(password)
+		return subtle.ConstantTimeCompare([]byte(encoded), []byte(expected)) == 1, true
+	}
+	return false, false
+}
+
 // JWTClaims 自定义JWT声明
 type JWTClaims struct {
-	UserId   int64  `json:"user_id"`
-	Username string `json:"username"`
-	RoleType int    `json:"role_type"`
+	UserId       int64  `json:"user_id"`
+	Username     string `json:"username"`
+	RoleType     int    `json:"role_type"`
+	TokenVersion int64  `json:"token_version"`
 	jwt.RegisteredClaims
 }
 
 // GenerateJWT 生成JWT Token
-func GenerateJWT(userId int64, username string, roleType int) (string, error) {
+func GenerateJWT(userId int64, username string, roleType int, versions ...int64) (string, error) {
+	secret, err := getJWTSecret()
+	if err != nil {
+		return "", err
+	}
+	var tokenVersion int64
+	if len(versions) > 0 {
+		tokenVersion = versions[0]
+	}
 	claims := JWTClaims{
-		UserId:   userId,
-		Username: username,
-		RoleType: roleType,
+		UserId:       userId,
+		Username:     username,
+		RoleType:     roleType,
+		TokenVersion: tokenVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Audience:  []string{"Gofi"},
 			Issuer:    "Gofi",
@@ -57,33 +93,20 @@ func GenerateJWT(userId int64, username string, roleType int) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(getJWTSecret()))
+	return token.SignedString([]byte(secret))
 }
 
-// ParseJWTFromHeader 从Header中获取并解析JWT
-func ParseJWTFromHeader(ctx *gin.Context) (*JWTClaims, error) {
-	authHeader := ctx.GetHeader("Authorization")
-	if authHeader == "" {
-		return nil, fmt.Errorf("authorization header missing")
+func ParseJWTString(tokenString string) (*JWTClaims, error) {
+	secret, err := getJWTSecret()
+	if err != nil {
+		return nil, err
 	}
-
-	// 支持 "Bearer token" 和 "token" 两种格式
-	tokenString := strings.TrimSpace(authHeader)
-	if strings.HasPrefix(strings.ToLower(tokenString), "bearer ") {
-		tokenString = strings.TrimSpace(tokenString[7:])
-	}
-
-	if tokenString == "" {
-		return nil, fmt.Errorf("token is empty")
-	}
-
-	// 解析JWT
 	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
 		// 验证签名方法
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+		if token.Method != jwt.SigningMethodHS256 {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(getJWTSecret()), nil
+		return []byte(secret), nil
 	})
 
 	if err != nil {
@@ -102,55 +125,4 @@ func ParseJWTFromHeader(ctx *gin.Context) (*JWTClaims, error) {
 	}
 
 	return claims, nil
-}
-
-// ParseUserIdFromJWT 从JWT中获取用户ID
-func ParseUserIdFromJWT(ctx *gin.Context) (int64, error) {
-	claims, err := ParseJWTFromHeader(ctx)
-	if err != nil {
-		return -1, err
-	}
-	return claims.UserId, nil
-}
-
-// ParseRoleTypeFromJWT 从JWT中获取用户角色
-func ParseRoleTypeFromJWT(ctx *gin.Context) (int, error) {
-	claims, err := ParseJWTFromHeader(ctx)
-	if err != nil {
-		return -1, err
-	}
-	return claims.RoleType, nil
-}
-
-// GetCurrentUserClaims 获取当前用户的JWT声明
-func GetCurrentUserClaims(ctx *gin.Context) (*JWTClaims, error) {
-	return ParseJWTFromHeader(ctx)
-}
-
-// ParseUserIdFromJWTString 从JWT字符串中获取用户ID
-func ParseUserIdFromJWTString(tokenString string) (int64, error) {
-	// 解析JWT
-	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-		// 验证签名方法
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(getJWTSecret()), nil
-	})
-
-	if err != nil {
-		return -1, fmt.Errorf("invalid token: %v", err)
-	}
-
-	// 验证Token
-	if !token.Valid {
-		return -1, fmt.Errorf("token is invalid")
-	}
-
-	claims, ok := token.Claims.(*JWTClaims)
-	if !ok {
-		return -1, fmt.Errorf("invalid token claims")
-	}
-
-	return claims.UserId, nil
 }

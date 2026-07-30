@@ -3,9 +3,15 @@
 *.idea
 *gofi.db
 node_modules
+/gofi-backend/env/dist/
 # Ignore Gradle project-specific cache directory
 .gradle
 
 # Ignore Gradle build output directory
 build
 *coverage
+
+# Local maintainer workspace.
+# Public decisions belong in doc/; raw audits, checkpoints, and issue drafts do not.
+.gofi-work/
+.gofi-jwt-secret

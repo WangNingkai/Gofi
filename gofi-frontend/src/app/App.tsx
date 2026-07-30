@@ -1,7 +1,7 @@
 import React from 'react'
-import { Toaster } from './components/ui/sonner'
-import GofiRouter from './router'
-import NetworkStatus from './components/NetworkStatus'
+import { Toaster } from '@/components/ui/sonner'
+import GofiRouter from '@/router'
+import NetworkStatus from '@/components/NetworkStatus'
 
 const App = () => {
     return (

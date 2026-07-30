@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,21 +22,18 @@ func StaticFS(urlPrefix string, targetPath string, staticAssetsFS embed.FS) gin.
 	fileServer := http.FileServer(http.FS(distFS))
 
 	return func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.URL.Path, "/api/") || c.Request.URL.Path == "/api" {
+			c.Next()
+			return
+		}
 		filePath := path.Join(".", c.Request.URL.Path)
-		// 添加日志：请求的静态资源路径
-		tool.Info("[StaticFS] 请求静态资源:", filePath)
 		_, err := distFS.Open(filePath)
 
 		if err == nil {
-			// 命中静态资源，记录日志
-			tool.Info("[StaticFS] 命中静态资源:", filePath)
 			addCacheHeaders(c)
 			fileServer.ServeHTTP(c.Writer, c.Request)
 			c.Abort()
 			return
-		} else {
-			// 未命中静态资源，记录日志
-			tool.Warn("[StaticFS] 未命中静态资源:", filePath, "err:", err)
 		}
 		// 未命中时不处理，交由后续NoRoute处理（通常fallback到index.html）
 	}
@@ -70,7 +66,4 @@ func addCacheHeaders(c *gin.Context) {
 		// 其他文件缓存 1 小时
 		c.Header("Cache-Control", "public, max-age=3600")
 	}
-
-	// 添加 ETag 支持
-	c.Header("ETag", `"`+time.Now().Format("20060102150405")+`"`)
 }

@@ -3,7 +3,6 @@ import {
     Calendar,
     ChevronLeft,
     ChevronRight,
-    Copy,
     Download,
     Eraser,
     Folder,
@@ -13,7 +12,6 @@ import {
     Home,
     List,
     MoreVertical,
-    Move,
     RefreshCw,
     Search,
     Share,
@@ -24,8 +22,8 @@ import {
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
-import useSWR from 'swr'
-import repo, { FileInfo, DirectoryData } from '../../api/repository'
+import { deleteFileOrFolder, getFileDownloadUrl, getFilePreviewUrl, uploadFiles as uploadFilesRequest } from '@/features/files/api'
+import type { DirectoryData, FileInfo } from '@/features/files/types'
 import FileIcon from '../../components/FileIcon'
 import MainLayout from '../../components/layouts/MainLayout/Index'
 import LogoLoading from '../../components/LogoLoading'
@@ -66,14 +64,14 @@ import {
     TooltipTrigger
 } from '../../components/ui/tooltip'
 import { UploadDialog } from '../../components/UploadDialog'
-import QueryKey from '../../constants/swr'
-import { useCurrentUser } from '../../hook/user'
+import { useAccessCapabilities } from '../../features/permissions/useAccessCapabilities'
 import EnvUtil from '../../utils/env.util'
 import { FormatUtil } from '../../utils/format.util'
 import MimeTypeUtil from '../../utils/mimetype.util'
 import Toast from '../../utils/toast.util'
 import PageHeader from '../../components/PageHeader'
 import PathUtil from '../../utils/path.util'
+import { useDirectory } from '../../features/files/useDirectory'
 
 interface FilesProps {
     directoryData?: DirectoryData
@@ -90,7 +88,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
     const [searchQuery, setSearchQuery] = useState<string>('')
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
     const [fileTypeFilter, setFileTypeFilter] = useState<string>('all')
-    const { user } = useCurrentUser()
+    const { capabilities } = useAccessCapabilities()
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [deletingItem, setDeletingItem] = useState<FileInfo | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
@@ -122,26 +120,8 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
     }, [searchOpen]);
 
     // 如果有传入的directoryData，优先使用，否则请求API
-    const {
-        data: apiFileInfos,
-        error,
-        mutate,
-        isValidating,
-    } = useSWR(
-        // 只有在没有directoryData时才请求API
-        !directoryData && currentPath ? [QueryKey.FILE_LIST, currentPath] : null, 
-        async ([, dir]) => {
-            const response = await repo.fetchFile(dir)
-            if (response.type === 'directory') {
-                return (response.data as DirectoryData).files
-            }
-            throw new Error('Path is not a directory')
-        }
-    )
-
-    // 优先使用props传入的数据，否则使用API请求的数据
-    const fileInfos = directoryData?.files || apiFileInfos
-    const fetching = !fileInfos && !error && !directoryData
+    const { files: fileInfos, error, refresh: mutate, isLoading: fetching, isValidating } =
+        useDirectory(currentPath, directoryData)
 
     // 目录操作
     const hasParentDirectory = () => currentPath !== '/' && currentPath.lastIndexOf('/') > 0
@@ -190,21 +170,13 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
 
     // 跳转
     const onFileNameClick = (fileinfo: FileInfo) => {
-        console.log('[Files] 点击文件:', {
-            name: fileinfo.name,
-            path: fileinfo.path,
-            isDirectory: fileinfo.isDirectory,
-            fileType: fileinfo.fileType
-        })
-        
         if (fileinfo.isDirectory) {
-            const targetUrl = PathUtil.buildFileUrl(fileinfo.path)
-            console.log('[Files] 跳转到目录:', {
-                originalPath: fileinfo.path,
-                targetUrl
-            })
-            navigate(targetUrl)
+            navigate(PathUtil.buildFileUrl(fileinfo.path))
         } else {
+            if (!capabilities.preview) {
+                Toast.e(t('pages.exception.403.description'))
+                return
+            }
             // 如果是图片文件，通过state传递当前目录的图片列表
             if (fileinfo.fileType === 'image' || MimeTypeUtil.previewableTypeOf(fileinfo.extension, fileinfo.mime) === 'image') {
                 // 获取当前目录的所有图片文件
@@ -218,27 +190,16 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                 
                 // 通过state传递图片列表数据
                 const imageListData = {
-                    imageList: imageFiles.map(file => repo.getFilePreviewUrl(file.path)),
+                    imageList: imageFiles.map(file => getFilePreviewUrl(file.path)),
                     currentIndex: currentIndex >= 0 ? currentIndex : 0,
                     directoryPath: currentPath
                 }
                 
-                const targetUrl = PathUtil.buildFileUrl(fileinfo.path)
-                console.log('[Files] 跳转到图片文件:', {
-                    originalPath: fileinfo.path,
-                    targetUrl,
-                    imageListData
-                })
-                navigate(targetUrl, {
+                navigate(PathUtil.buildFileUrl(fileinfo.path), {
                     state: { imageListData }
                 })
             } else {
-                const targetUrl = PathUtil.buildFileUrl(fileinfo.path)
-                console.log('[Files] 跳转到普通文件:', {
-                    originalPath: fileinfo.path,
-                    targetUrl
-                })
-                navigate(targetUrl)
+                navigate(PathUtil.buildFileUrl(fileinfo.path))
             }
         }
     }
@@ -325,7 +286,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
     // 处理上传，增加 overwrite 支持
     const handleUpload = async (files: File[], onProgress?: (fileName: string, progress: number) => void, overwrite = false) => {
         try {
-            await repo.uploadFiles(currentPath, files, onProgress || (() => {}), overwrite)
+            await uploadFilesRequest(currentPath, files, onProgress || (() => {}), overwrite)
             mutate()
         } catch (e: any) {
             throw new Error(e?.message || t('pages.file-list.upload-failed'))
@@ -358,7 +319,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
 
     // 处理文件操作
     const handleDownload = (file: FileInfo) => {
-        const downloadUrl = repo.getFileDownloadUrl(file.path)
+        const downloadUrl = getFileDownloadUrl(file.path)
         const link = document.createElement('a')
         link.href = downloadUrl
         link.download = file.name
@@ -368,7 +329,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
     }
 
     const handleShare = (file: FileInfo) => {
-        const shareUrl = repo.getFilePreviewUrl(file.path)
+        const shareUrl = getFilePreviewUrl(file.path)
         if (navigator.share) {
             navigator.share({
                 title: file.name,
@@ -380,16 +341,6 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
         }
     }
 
-    const handleCopy = (file: FileInfo) => {
-        // TODO: 实现复制功能
-        Toast.i(t('toast.feature_coming_soon'))
-    }
-
-    const handleMove = (file: FileInfo) => {
-        // TODO: 实现移动功能
-        Toast.i(t('toast.feature_coming_soon'))
-    }
-
     const handleDelete = (file: FileInfo) => {
         setDeletingItem(file)
         setShowDeleteDialog(true)
@@ -399,7 +350,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
         if (!deletingItem) return
         setDeleteLoading(true)
         try {
-            await repo.deleteFileOrFolder(deletingItem.path)
+            await deleteFileOrFolder(deletingItem.path)
             Toast.s(t('pages.file-list.delete-success'))
             setShowDeleteDialog(false)
             setDeletingItem(null)
@@ -625,8 +576,8 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <Button onClick={() => {
-                                        if (!user) {
-                                            Toast.e(t('pages.file-list.please-login-first'))
+                                        if (!capabilities.upload) {
+                                            Toast.e(t('pages.exception.403.description'))
                                             return
                                         }
                                         uploadRef.current?.click()
@@ -699,7 +650,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                     <LogoLoading className="mb-4" />
                     <div className="text-center mt-2">
                         <span className="text-sm text-muted-foreground font-medium">
-                            加载中...
+                            {t('common.loading')}
                         </span>
                     </div>
                 </div>
@@ -725,7 +676,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                     </div>
                     <h3 className="text-lg font-medium text-foreground mb-2">{t('pages.file-list.empty-folder.title')}</h3>
                     <p className="text-muted-foreground mb-6">{t('pages.file-list.empty-folder.description')}</p>
-                    <Button onClick={() => setShowUploadDialog(true)}>
+                    <Button onClick={() => setShowUploadDialog(true)} disabled={!capabilities.upload}>
                         {t('pages.file-list.upload-files')}
                     </Button>
                 </div>
@@ -807,39 +758,36 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                         </Badge>
                                     </div>
                                     <div className="flex items-center space-x-1">
-                                        <DropdownMenu>
+                                        {(capabilities.download || capabilities.remove) && <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                                                     <MoreVertical className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                {!item.isDirectory && (
+                                                {!item.isDirectory && capabilities.download && (
                                                     <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDownload(item); }}>
                                                         <Download className="mr-2 h-4 w-4" />
                                                         {t('tooltip.download')}
                                                     </DropdownMenuItem>
                                                 )}
-                                                <DropdownMenuItem onClick={e => { e.stopPropagation(); handleShare(item); }}>
-                                                    <Share className="mr-2 h-4 w-4" />
-                                                    {t('tooltip.share')}
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem onClick={e => { e.stopPropagation(); handleCopy(item); }}>
-                                                    <Copy className="mr-2 h-4 w-4" />
-                                                    {t('menu.copy')}
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={e => { e.stopPropagation(); handleMove(item); }}>
-                                                    <Move className="mr-2 h-4 w-4" />
-                                                    {t('menu.move')}
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDelete(item); }} className="text-destructive">
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    {t('menu.delete')}
-                                                </DropdownMenuItem>
+                                                {!item.isDirectory && capabilities.download && (
+                                                    <DropdownMenuItem onClick={e => { e.stopPropagation(); handleShare(item); }}>
+                                                        <Share className="mr-2 h-4 w-4" />
+                                                        {t('tooltip.share')}
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {capabilities.remove && (
+                                                    <>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDelete(item); }} className="text-destructive">
+                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                            {t('menu.delete')}
+                                                        </DropdownMenuItem>
+                                                    </>
+                                                )}
                                             </DropdownMenuContent>
-                                        </DropdownMenu>
+                                        </DropdownMenu>}
                                     </div>
                                 </div>
                                 
@@ -916,37 +864,36 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center space-x-1">
-                                                    <DropdownMenu>
+                                                    {(capabilities.download || capabilities.remove) && <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
                                                             <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                                                                 <MoreVertical className="h-4 w-4" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDownload(item); }}>
-                                                                <Download className="mr-2 h-4 w-4" />
-                                                                {t('tooltip.download')}
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={e => { e.stopPropagation(); handleShare(item); }}>
-                                                                <Share className="mr-2 h-4 w-4" />
-                                                                {t('tooltip.share')}
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuSeparator />
-                                                            <DropdownMenuItem onClick={e => { e.stopPropagation(); handleCopy(item); }}>
-                                                                <Copy className="mr-2 h-4 w-4" />
-                                                                {t('menu.copy')}
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={e => { e.stopPropagation(); handleMove(item); }}>
-                                                                <Move className="mr-2 h-4 w-4" />
-                                                                {t('menu.move')}
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuSeparator />
-                                                            <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDelete(item); }} className="text-destructive">
-                                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                                {t('menu.delete')}
-                                                            </DropdownMenuItem>
+                                                            {!item.isDirectory && capabilities.download && (
+                                                                <>
+                                                                    <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDownload(item); }}>
+                                                                        <Download className="mr-2 h-4 w-4" />
+                                                                        {t('tooltip.download')}
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={e => { e.stopPropagation(); handleShare(item); }}>
+                                                                        <Share className="mr-2 h-4 w-4" />
+                                                                        {t('tooltip.share')}
+                                                                    </DropdownMenuItem>
+                                                                </>
+                                                            )}
+                                                            {capabilities.remove && (
+                                                                <>
+                                                                    <DropdownMenuSeparator />
+                                                                    <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDelete(item); }} className="text-destructive">
+                                                                        <Trash2 className="mr-2 h-4 w-4" />
+                                                                        {t('menu.delete')}
+                                                                    </DropdownMenuItem>
+                                                                </>
+                                                            )}
                                                         </DropdownMenuContent>
-                                                    </DropdownMenu>
+                                                    </DropdownMenu>}
                                                 </div>
                                             </td>
                                         </tr>
@@ -1046,7 +993,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                         style={{ whiteSpace: 'nowrap', overflow: 'hidden' }}
                                     >
                                         <span className="flex-1 truncate">{f.name}</span>
-                                        <span className="w-24 text-center">{t('common.type')}: 文件</span>
+                                        <span className="w-24 text-center">{t('common.file-type.file')}</span>
                                         <span className="w-24 text-center">{FormatUtil.formatBytes(f.size)}</span>
                                     </div>
                                 ))}
@@ -1085,13 +1032,13 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                     open={showUploadDialog}
                     onOpenChange={setShowUploadDialog}
                     files={uploadFiles}
+                    canUpload={capabilities.upload}
                     onUpload={(files, onProgress) => handleUploadAdapter(files, onProgress, overwriteUpload)}
                     onSuccess={() => {
                         setOverwriteUpload(false)
                     }}
-                    onError={(error) => {
+                    onError={() => {
                         setOverwriteUpload(false)
-                        Toast.e(error)
                     }}
                 />
             </MainLayout>
@@ -1100,4 +1047,3 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
 }
 
 export default Files
-

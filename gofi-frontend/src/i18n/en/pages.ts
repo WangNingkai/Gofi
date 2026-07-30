@@ -39,6 +39,7 @@ export default {
     'pages.file-list.delete-failed': 'Delete failed',
     'pages.file-list.overwrite-confirm': 'Overwrite',
     'pages.file-list.overwrite-desc': '{{count}} duplicate files detected. Overwrite?',
+    'pages.file-list.overwrite-title': 'Duplicate files detected',
 
     // File preview page
     'pages.file-preview.title': 'File Preview',
@@ -115,6 +116,10 @@ export default {
     'pages.setup.step.config': 'Configuration',
     'pages.setup.step.done': 'Done',
     'pages.setup.storage-path': 'Storage Path',
+    'pages.setup.storage-path-optional': 'Leave blank to use the default storage directory',
+    'pages.setup.admin-username': 'Administrator username',
+    'pages.setup.admin-password': 'Administrator password',
+    'pages.setup.confirm-password': 'Confirm password',
     'pages.setup.reset-default': 'Reset to default',
     'pages.setup.validating': 'Validating path...',
     'pages.setup.help-text': 'The default file repository is the Storage subdirectory under the Gofi program path. You can specify another path, but make sure Gofi has read/write permissions for that directory.',
@@ -126,6 +131,9 @@ export default {
     'pages.setup.error.path-too-long': 'The path is too long, please choose a shorter one',
     'pages.setup.error.init-failed': 'Initialization failed, please check directory permissions or try again',
     'pages.setup.error.config-failed': 'Configuration failed, please try again',
+    'pages.setup.error.username': 'The administrator username must contain at least 3 characters without spaces',
+    'pages.setup.error.password-length': 'The administrator password must contain at least 10 characters',
+    'pages.setup.error.password-match': 'The two passwords do not match',
     'pages.setup.error.load-failed.title': 'Failed to load configuration',
     'pages.setup.error.load-failed.desc': 'Unable to load system configuration. Please check your network connection or refresh the page to retry',
 }

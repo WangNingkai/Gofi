@@ -1,9 +1,5 @@
 package db
 
-import (
-	tool "gofi/tool"
-)
-
 type Category string
 type Name string
 
@@ -61,27 +57,20 @@ func createGuestPermissions() []Permission {
 	return permissions
 }
 
-func SyncGuestPermissions() {
+func SyncGuestPermissions() error {
 	count, err := engine.Where("role_type = ?", RoleTypeGuest).Count(new(Permission))
 	if err != nil {
-		tool.GetLogger().Error(err)
-		return
+		return err
 	}
 
 	if count != 0 {
-		return
+		return nil
 	}
 
 	for _, permission := range createGuestPermissions() {
-		_, _ = engine.InsertOne(&permission)
+		if _, err := engine.InsertOne(&permission); err != nil {
+			return err
+		}
 	}
-}
-
-// 查询访客的权限
-func QueryGuestPermissions() (*[]Permission, error) {
-	permissions := make([]Permission, 0)
-
-	err := engine.Where("role_type = ?", RoleTypeGuest).Find(&permissions)
-
-	return &permissions, err
+	return nil
 }

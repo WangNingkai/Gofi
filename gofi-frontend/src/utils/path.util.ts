@@ -12,15 +12,14 @@ export default class PathUtil {
      */
     static decodePath(path: string): string {
         if (!path) return path
-        
+
         try {
             // 如果路径包含编码字符，进行解码
             if (path.includes('%')) {
                 return decodeURIComponent(path)
             }
             return path
-        } catch (e) {
-            console.warn('[PathUtil] 路径解码失败，使用原始路径:', e)
+        } catch {
             return path
         }
     }
@@ -42,7 +41,7 @@ export default class PathUtil {
      */
     static extractPathFromUrl(pathname: string): string {
         const pathSegments = pathname.split('/')
-        
+
         if (pathSegments[1] === 'file' && pathSegments.length > 2) {
             // 从 /file/path/to/file.jpg 中提取 path/to/file.jpg
             const filePath = '/' + pathSegments.slice(2).join('/')
@@ -60,7 +59,7 @@ export default class PathUtil {
         if (!filePath || filePath === '/') {
             return '/file/'
         }
-        
+
         // 去掉开头的斜杠，然后构建URL
         const pathWithoutSlash = filePath.startsWith('/') ? filePath.substring(1) : filePath
         return `/file/${pathWithoutSlash}`
@@ -134,4 +133,4 @@ export default class PathUtil {
             return url
         }
     }
-} 
+}

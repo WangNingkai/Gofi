@@ -1,46 +1,46 @@
 import {
     Database,
-    Settings,
     Shield,
-    Lock,
     Monitor,
-    Save,
     X,
     Edit3,
     Check,
-    Loader2,
-    AlertCircle,
-    Info
+    Loader2
 } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR, { useSWRConfig } from 'swr'
-import { changePassword, fetchConfiguration, updateStoragePath } from '../../../api/repository'
-import logo from '../../../assets/logo.svg'
+import useSWR from 'swr'
+import { changePassword } from '@/features/auth/api'
+import { fetchAdminConfiguration, updateStoragePath } from '@/features/configuration/api'
 import MainLayout from '../../../components/layouts/MainLayout/Index'
-import { Alert, AlertDescription } from '../../../components/ui/alert'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import QueryKey from '../../../constants/swr'
 import { useCurrentUser } from '../../../hook/user'
 import Toast from '../../../utils/toast.util'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card'
+import { Card, CardContent } from '../../../components/ui/card'
 import { Label } from '../../../components/ui/label'
 import { RiSettings2Line } from 'react-icons/ri'
 import PageHeader from '../../../components/PageHeader'
+import { clearSessionToken } from '@/features/auth/session'
+import { tokenState } from '@/states/common.state'
+import { useSetAtom } from 'jotai'
+import { useNavigate } from 'react-router-dom'
 
-interface IProps {}
-
-const Setting: React.FC<IProps> = () => {
+const Setting: React.FC = () => {
     const [processing, setProcessing] = useState(false)
     const [storagePathInput, setStoragePathInput] = useState<string>()
     const [currentStoragePath, setCurrentStoragePath] = useState<string>()
-    const [passwordInput, setPasswordInput] = useState<string>('******')
+    const [currentPasswordInput, setCurrentPasswordInput] = useState('')
+    const [passwordInput, setPasswordInput] = useState('')
+    const [passwordConfirmation, setPasswordConfirmation] = useState('')
     const [editingField, setEditingField] = useState<'storage' | 'password' | null>(null)
     const { t } = useTranslation()
     const { user } = useCurrentUser()
-    const { data: config, mutate } = useSWR(QueryKey.CONFIG, () => fetchConfiguration())
+    const setToken = useSetAtom(tokenState)
+    const navigate = useNavigate()
+    const { data: config, mutate } = useSWR(QueryKey.CONFIG_DETAILS, fetchAdminConfiguration)
 
     useEffect(() => {
         if (config) {
@@ -72,17 +72,34 @@ const Setting: React.FC<IProps> = () => {
 
     // 修改密码
     const handlePasswordSubmit = async () => {
-        if (!passwordInput?.trim() || passwordInput === '******') {
+        if (!currentPasswordInput) {
             Toast.e(t('form.setting.password.validation.required'))
+            return
+        }
+        if (passwordInput.length < 10) {
+            Toast.e(t('form.setting.password.validation.min-length'))
+            return
+        }
+        if (passwordInput !== passwordConfirmation) {
+            Toast.e(t('pages.setup.error.password-match'))
             return
         }
 
         try {
             setProcessing(true)
-            await changePassword({ password: passwordInput, confirm: passwordInput })
+            await changePassword({
+                currentPassword: currentPasswordInput,
+                password: passwordInput,
+                confirm: passwordConfirmation,
+            })
             setEditingField(null)
-            setPasswordInput('******')
+            setCurrentPasswordInput('')
+            setPasswordInput('')
+            setPasswordConfirmation('')
+            clearSessionToken()
+            setToken(null)
             Toast.s(t('toast.password-change-success'))
+            navigate('/auth/login', { replace: true })
         } catch (error) {
             Toast.e(t('pages.setting.password-change-failed'))
         } finally {
@@ -93,104 +110,10 @@ const Setting: React.FC<IProps> = () => {
     const cancelEdit = () => {
         setEditingField(null)
         setStoragePathInput(currentStoragePath)
-        setPasswordInput('******')
+        setCurrentPasswordInput('')
+        setPasswordInput('')
+        setPasswordConfirmation('')
     }
-
-    const SettingCard: React.FC<{
-        title: string
-        description?: string
-        icon: React.ReactNode
-        children: React.ReactNode
-        badge?: string
-    }> = ({ title, description, icon, children, badge }) => (
-        <div className="bg-card border border-border rounded-lg p-6 hover:shadow-sm transition-shadow">
-            <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                        {icon}
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-                        {description && (
-                            <p className="text-sm text-muted-foreground mt-1">{description}</p>
-                        )}
-                    </div>
-                </div>
-                {badge && <Badge variant="secondary">{badge}</Badge>}
-            </div>
-            {children}
-        </div>
-    )
-
-    const EditableField: React.FC<{
-        value: string
-        placeholder?: string
-        isEditing: boolean
-        onEdit: () => void
-        onCancel: () => void
-        onSubmit: () => void
-        onChange: (value: string) => void
-        processing: boolean
-        type?: 'text' | 'password'
-    }> = ({ 
-        value, 
-        placeholder, 
-        isEditing, 
-        onEdit, 
-        onCancel, 
-        onSubmit, 
-        onChange, 
-        processing,
-        type = 'text'
-    }) => (
-        <div className="flex items-center space-x-2">
-            {isEditing ? (
-                <>
-                    <Input
-                        type={type}
-                        value={value}
-                        placeholder={placeholder}
-                        onChange={(e) => onChange(e.target.value)}
-                        disabled={processing}
-                        className="h-8 px-3 text-sm rounded-md"
-                    />
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={onCancel}
-                        disabled={processing}
-                    >
-                        <X className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        size="sm"
-                        onClick={onSubmit}
-                        disabled={processing || !value.trim() || value === '******'}
-                    >
-                        {processing ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                            <Check className="h-4 w-4" />
-                        )}
-                    </Button>
-                </>
-            ) : (
-                <>
-                    <div className="flex-1 p-3 bg-muted/50 rounded-md text-sm h-8 flex items-center">
-                        {type === 'password' ? '••••••' : value}
-                    </div>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={onEdit}
-                        disabled={processing}
-                    >
-                        <Edit3 className="h-4 w-4" />
-                    </Button>
-                </>
-            )}
-        </div>
-    )
 
     return (
         <MainLayout>
@@ -217,7 +140,7 @@ const Setting: React.FC<IProps> = () => {
                                 <span className="text-sm font-medium">{t('pages.setting.system-info.storage-path')}</span>
                                 <div className="text-right">
                                     <div className="text-sm text-muted-foreground">
-                                        {config?.appPath || t('pages.setting.loading')}
+                                        {(config?.customStoragePath || config?.defaultStoragePath) ?? t('pages.setting.loading')}
                                     </div>
                                 </div>
                             </div>
@@ -313,15 +236,38 @@ const Setting: React.FC<IProps> = () => {
                                 <div className="flex items-center space-x-2">
                                     {editingField === 'password' ? (
                                         <>
-                                            <Input
-                                                id="password"
-                                                type="password"
-                                                placeholder={t('form.setting.password.placeholder')}
-                                                value={passwordInput}
-                                                onChange={(e) => setPasswordInput(e.target.value)}
-                                                disabled={processing}
-                                                className="h-8 px-3 text-sm rounded-md"
-                                            />
+                                            <div className="flex-1 space-y-2">
+                                                <Input
+                                                    id="current-password"
+                                                    type="password"
+                                                    autoComplete="current-password"
+                                                    placeholder={t('form.setting.password.current-placeholder')}
+                                                    value={currentPasswordInput}
+                                                    onChange={(e) => setCurrentPasswordInput(e.target.value)}
+                                                    disabled={processing}
+                                                    className="h-8 px-3 text-sm rounded-md"
+                                                />
+                                                <Input
+                                                    id="password"
+                                                    type="password"
+                                                    autoComplete="new-password"
+                                                    placeholder={t('form.setting.password.placeholder')}
+                                                    value={passwordInput}
+                                                    onChange={(e) => setPasswordInput(e.target.value)}
+                                                    disabled={processing}
+                                                    className="h-8 px-3 text-sm rounded-md"
+                                                />
+                                                <Input
+                                                    id="password-confirmation"
+                                                    type="password"
+                                                    autoComplete="new-password"
+                                                    placeholder={t('form.setting.password.confirm-placeholder')}
+                                                    value={passwordConfirmation}
+                                                    onChange={(e) => setPasswordConfirmation(e.target.value)}
+                                                    disabled={processing}
+                                                    className="h-8 px-3 text-sm rounded-md"
+                                                />
+                                            </div>
                                             <Button
                                                 variant="outline"
                                                 size="sm"
@@ -333,7 +279,12 @@ const Setting: React.FC<IProps> = () => {
                                             <Button
                                                 size="sm"
                                                 onClick={handlePasswordSubmit}
-                                                disabled={processing || !passwordInput?.trim() || passwordInput === '******'}
+                                                disabled={
+                                                    processing ||
+                                                    !currentPasswordInput ||
+                                                    passwordInput.length < 10 ||
+                                                    passwordInput !== passwordConfirmation
+                                                }
                                             >
                                                 {processing ? (
                                                     <Loader2 className="h-4 w-4 animate-spin" />

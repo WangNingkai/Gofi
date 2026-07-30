@@ -2,23 +2,73 @@
 
 ## 环境要求
 
-- Node.js 16+
-- Go 1.18+
-- pnpm（推荐）
+- Go 1.26.5
+- Node.js 24.14.1 LTS
+- pnpm 10.34.5
+- GNU Make
+- C 编译器（SQLite 驱动需要 CGO）
 
-## 启动后端
+仓库根目录的 `.go-version`、`.node-version` 和前端 `packageManager` 字段记录了当前工具版本。
+
+## 安装依赖
+
+在仓库根目录执行：
 
 ```bash
-cd gofi-backend
-go run main.go
+make install
 ```
 
-## 启动前端
+该命令会按 `gofi-frontend/pnpm-lock.yaml` 安装前端依赖，并下载 `gofi-backend/go.sum` 锁定的 Go 模块。
+
+## 启动开发环境
+
+同时启动前后端：
 
 ```bash
-cd gofi-frontend
-pnpm install
-pnpm dev
+make dev
 ```
 
-访问：http://localhost:3000 
+也可以在两个终端分别执行：
+
+```bash
+make dev-backend
+make dev-frontend
+```
+
+- 前端：http://localhost:3000
+- 后端：http://localhost:8080
+
+## 运行验证
+
+```bash
+make test
+make check
+```
+
+`make check` 包含 Go 格式检查、`go vet`、race 测试、前端类型检查、前端测试和生产构建。
+
+## 构建生产二进制
+
+```bash
+make build
+make smoke
+```
+
+构建产物及 SHA-256 校验文件位于 `output/`。生产二进制已经嵌入前端资源。
+
+## 构建 Docker 镜像
+
+```bash
+docker build --tag gofi:local .
+docker run --rm -p 8080:8080 -v gofi-data:/app gofi:local
+```
+
+首次启动后访问 http://localhost:8080，自行设置管理员用户名和至少 10 位的密码。项目不提供默认管理员凭据。
+
+`/app` 中包含数据库、文件、配置和自动生成的 JWT 签名密钥，必须整体持久化并备份。不要在容器重建时更换或丢失该数据卷。
+
+## 清理生成物
+
+```bash
+make clean
+```

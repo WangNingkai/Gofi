@@ -1,14 +1,53 @@
-# gofi会在工作目录生成gofi.db文件用于存储gofi相关配置,可以将/app目录映射到host中以便持久化
-# 由于gofi的默认文件仓库为工作目录下的storage文件夹,所以可以将/app/storage映射到host中,以便初始化Gofi时无需再指定storage path
-FROM alpine:3.14
-COPY ./output/gofi-linux-amd64 /usr/local/bin/gofi
+ARG NODE_VERSION=24.14.1
+ARG GO_VERSION=1.26.5
+ARG PNPM_VERSION=10.34.5
+
+FROM node:${NODE_VERSION}-alpine AS frontend
+ARG PNPM_VERSION
+WORKDIR /src/gofi-frontend
+
+RUN npm install --global "pnpm@${PNPM_VERSION}"
+COPY gofi-frontend/package.json gofi-frontend/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY gofi-frontend/ ./
+RUN pnpm build
+
+FROM golang:${GO_VERSION}-alpine AS backend
+ARG VERSION=dev
+WORKDIR /src
+
+RUN apk add --no-cache build-base
+COPY gofi-backend/go.mod gofi-backend/go.sum ./
+RUN go mod download
+COPY gofi-backend/ ./
+COPY --from=frontend /src/gofi-frontend/dist ./env/dist
+RUN CGO_ENABLED=1 go build \
+    -tags=production \
+    -ldflags="-w -s -X gofi/db.version=${VERSION}" \
+    -o /src/gofi .
+
+FROM alpine:3.22
+ARG VERSION=dev
+
+RUN apk add --no-cache ca-certificates tzdata \
+    && addgroup -S gofi \
+    && adduser -S -G gofi gofi \
+    && mkdir -p /app/storage \
+    && chown -R gofi:gofi /app
+
+COPY --from=backend /src/gofi /usr/local/bin/gofi
+
 WORKDIR /app
-#定义时区环境变量
-ENV  TIME_ZONE Asia/Shanghai
-# 添加edge软件源
-RUN apk update \
-    # 安装最新版本的软件
-    && apk --no-cache add tzdata \
-    # 配置时区
-    && echo "${TIME_ZONE}" > /etc/timezone && ln -sf /usr/share/zoneinfo/${TIME_ZONE} /etc/localtime && date
-ENTRYPOINT [ "gofi"]
+USER gofi
+
+EXPOSE 8080
+VOLUME ["/app"]
+
+LABEL org.opencontainers.image.title="Gofi" \
+      org.opencontainers.image.source="https://github.com/Sloaix/Gofi" \
+      org.opencontainers.image.version="${VERSION}"
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget -q -O /dev/null http://127.0.0.1:8080/api/configuration || exit 1
+
+ENTRYPOINT ["gofi"]

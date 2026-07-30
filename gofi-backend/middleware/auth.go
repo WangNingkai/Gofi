@@ -1,122 +1,98 @@
 package middleware
 
 import (
-	"gofi/controller"
+	"net/http"
+	"strings"
+
+	"gofi/application"
 	"gofi/db"
 	"gofi/i18n"
-	"gofi/tool"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-// AuthChecker 认证检查中间件
-func AuthChecker(ctx *gin.Context) {
-	logger := tool.WithFields(map[string]interface{}{
-		"path":   ctx.Request.URL.Path,
-		"method": ctx.Request.Method,
-	})
+const (
+	currentUserKey    = "currentUser"
+	SessionCookieName = "gofi_session"
+)
 
-	logger.Debug(i18n.T(ctx, "auth.check_start"))
+var ErrNoCurrentUser = application.ErrUnauthenticated
 
-	// 解析JWT
-	claims, err := tool.ParseJWTFromHeader(ctx)
-	if err != nil {
-		logger.WithError(err).Error("Token解析失败")
-		ctx.AbortWithStatusJSON(http.StatusOK, controller.NewResource().Code(controller.StatusTokenInvalid).Message(i18n.T(ctx, "auth.not_authorized")).Build())
-		return
+func OptionalAuth(authentication *application.AuthenticationService) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		token := requestToken(ctx)
+		if token == "" {
+			ctx.Next()
+			return
+		}
+
+		user, err := authenticate(authentication, token)
+		if err != nil {
+			abortAuth(ctx, http.StatusUnauthorized, 10001, i18n.T(ctx, "auth.not_authorized"))
+			return
+		}
+		ctx.Set(currentUserKey, user)
+		ctx.Next()
 	}
-
-	// 验证用户是否存在
-	user, err := db.QueryUserById(claims.UserId)
-	if err != nil {
-		logger.WithError(err).WithField("user_id", claims.UserId).Error(i18n.T(ctx, "user.not_exist"))
-		ctx.AbortWithStatusJSON(http.StatusOK, controller.NewResource().Code(controller.StatusTokenInvalid).Message(i18n.T(ctx, "user.not_exist")).Build())
-		return
-	}
-
-	// 验证用户名是否匹配（防止用户被删除后Token仍有效）
-	if user.Username != claims.Username {
-		logger.WithFields(map[string]interface{}{
-			"token_username": claims.Username,
-			"db_username":    user.Username,
-			"user_id":        claims.UserId,
-		}).Error(i18n.T(ctx, "auth.username_not_match"))
-		ctx.AbortWithStatusJSON(http.StatusOK, controller.NewResource().Code(controller.StatusTokenInvalid).Message(i18n.T(ctx, "auth.not_authorized")).Build())
-		return
-	}
-
-	// 验证角色是否匹配
-	if int(user.RoleType) != claims.RoleType {
-		logger.WithFields(map[string]interface{}{
-			"token_role": claims.RoleType,
-			"db_role":    user.RoleType,
-			"user_id":    claims.UserId,
-		}).Error(i18n.T(ctx, "auth.role_not_match"))
-		ctx.AbortWithStatusJSON(http.StatusOK, controller.NewResource().Code(controller.StatusTokenInvalid).Message(i18n.T(ctx, "auth.not_authorized")).Build())
-		return
-	}
-
-	// 将用户信息存储到上下文中，供后续处理器使用
-	ctx.Set("currentUser", user)
-	ctx.Set("currentUserId", claims.UserId)
-	ctx.Set("currentUserRole", claims.RoleType)
-
-	logger.WithFields(map[string]interface{}{
-		"user_id":  claims.UserId,
-		"username": claims.Username,
-		"role":     claims.RoleType,
-	}).Debug(i18n.T(ctx, "auth.check_success"))
 }
 
-// AdminChecker 管理员权限检查中间件
-func AdminChecker(ctx *gin.Context) {
-	logger := tool.WithField("path", ctx.Request.URL.Path)
-	logger.Debug(i18n.T(ctx, "auth.admin_check_start"))
-
-	// 先进行基础认证
-	AuthChecker(ctx)
-	if ctx.IsAborted() {
-		return
+func RequireAuth(authentication *application.AuthenticationService) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		user, err := authenticate(authentication, requestToken(ctx))
+		if err != nil {
+			abortAuth(ctx, http.StatusUnauthorized, 10001, i18n.T(ctx, "auth.not_authorized"))
+			return
+		}
+		ctx.Set(currentUserKey, user)
+		ctx.Next()
 	}
-
-	// 检查是否为管理员角色
-	roleType, exists := ctx.Get("currentUserRole")
-	if !exists {
-		logger.Error(i18n.T(ctx, "auth.get_role_failed"))
-		ctx.AbortWithStatusJSON(http.StatusOK, controller.NewResource().Fail().Message(i18n.T(ctx, "auth.not_authorized")).Build())
-		return
-	}
-
-	if roleType.(int) != int(db.RoleTypeAdmin) {
-		logger.WithField("current_role", roleType).Error(i18n.T(ctx, "auth.admin_permission_denied"))
-		ctx.AbortWithStatusJSON(http.StatusOK, controller.NewResource().Fail().Message(i18n.T(ctx, "auth.insufficient_permissions")).Build())
-		return
-	}
-
-	logger.Debug(i18n.T(ctx, "auth.admin_check_success"))
 }
 
-// GetCurrentUser 从上下文中获取当前用户
+func RequireAdmin(authentication *application.AuthenticationService) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		user, err := authenticate(authentication, requestToken(ctx))
+		if err != nil {
+			abortAuth(ctx, http.StatusUnauthorized, 10001, i18n.T(ctx, "auth.not_authorized"))
+			return
+		}
+		if user.RoleType != db.RoleTypeAdmin {
+			abortAuth(ctx, http.StatusForbidden, 10004, i18n.T(ctx, "auth.insufficient_permissions"))
+			return
+		}
+		ctx.Set(currentUserKey, user)
+		ctx.Next()
+	}
+}
+
+func requestToken(ctx *gin.Context) string {
+	token := strings.TrimSpace(ctx.GetHeader("Authorization"))
+	if token == "" {
+		if cookie, err := ctx.Cookie(SessionCookieName); err == nil {
+			token = cookie
+		}
+	}
+	return token
+}
+
+func authenticate(authentication *application.AuthenticationService, token string) (*db.User, error) {
+	if token == "" {
+		return nil, application.ErrUnauthenticated
+	}
+	return authentication.Authenticate(token)
+}
+
 func GetCurrentUser(ctx *gin.Context) *db.User {
-	if user, exists := ctx.Get("currentUser"); exists {
-		return user.(*db.User)
+	value, exists := ctx.Get(currentUserKey)
+	if !exists {
+		return nil
 	}
-	return nil
+	user, ok := value.(*db.User)
+	if !ok {
+		return nil
+	}
+	return user
 }
 
-// GetCurrentUserId 从上下文中获取当前用户ID
-func GetCurrentUserId(ctx *gin.Context) int64 {
-	if userId, exists := ctx.Get("currentUserId"); exists {
-		return userId.(int64)
-	}
-	return -1
-}
-
-// GetCurrentUserRole 从上下文中获取当前用户角色
-func GetCurrentUserRole(ctx *gin.Context) int {
-	if role, exists := ctx.Get("currentUserRole"); exists {
-		return role.(int)
-	}
-	return -1
+func abortAuth(ctx *gin.Context, status, code int, message string) {
+	abortWithError(ctx, status, code, message)
 }

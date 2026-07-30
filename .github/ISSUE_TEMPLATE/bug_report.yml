@@ -1,0 +1,75 @@
+name: Bug 报告
+description: 报告能够稳定复现的异常行为
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。提交前请搜索已有 Issue，并移除日志中的密码、Token、Cookie 和私人路径。
+  - type: input
+    id: version
+    attributes:
+      label: Gofi 版本
+      description: 请填写版本号、Git 提交或 Docker 镜像标签。
+      placeholder: v1.0.0 或提交 SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: 部署方式
+      options:
+        - Docker
+        - 发布二进制
+        - 源码运行
+        - 其他
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: 运行环境
+      description: 请填写操作系统、CPU 架构、浏览器等相关信息。
+      placeholder: Ubuntu 24.04 / linux-amd64 / Chrome
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 请提供最小、连续且可以重复执行的步骤。
+      placeholder: |
+        1. 打开……
+        2. 执行……
+        3. 观察到……
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 补充信息
+      description: 可提供已经脱敏的日志、截图或最小复现仓库。
+      render: shell
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 提交确认
+      options:
+        - label: 我已搜索现有 Issue，没有找到相同问题。
+          required: true
+        - label: 我已移除密码、Token、Cookie、账号和私人路径等敏感信息。
+          required: true
