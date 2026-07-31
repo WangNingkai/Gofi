@@ -17,7 +17,7 @@
 | M1 核心重构 | Complete | 合并安全正确性、后端边界、前端边界及全部审计候选 |
 | M2 文件管理闭环 | Complete | 完成可靠上传及常用文件操作 |
 | M3 搜索与分享 | Complete | 在稳定核心之上增加索引搜索和分享能力 |
-| M4 稳定版发布 | Blocked | 本地实现与 amd64 验收完成，等待 arm64/GitHub Runner |
+| M4 稳定版发布 | Blocked | 本地实现与 amd64 验收完成，等待原生 arm64/GitHub Runner |
 
 ## M0 可重复基线
 
@@ -41,8 +41,8 @@
 | 统一项目命令 | Complete | 已提供 `install`、`dev`、`test`、`check`、`build`、`smoke` 和 `cross-build` |
 | 本地检查基线 | Complete | Go vet、race 测试、前端类型检查、36 个前端测试和生产构建通过 |
 | 生产二进制 | Complete | 当前平台单二进制构建、SHA-256 和临时目录启动冒烟通过 |
-| GitHub Actions | Pending verification | 工作流已修复，日常 CI 覆盖完整检查、Linux amd64/arm64 产物、amd64 冒烟和多架构 Docker 构建；等待推送后由 GitHub Runner 验证 |
-| Docker | Complete | 本机 linux/amd64 多阶段镜像构建、配置接口、嵌入首页、健康检查、非 root 用户和数据卷写入验证通过；arm64 构建已纳入日常 CI |
+| GitHub Actions | Pending verification | 日常 CI 使用 amd64/arm64 原生 Runner 完成检查、二进制冒烟和普通 Docker 构建，不依赖 Buildx 或 QEMU；等待推送后验证 |
+| Docker | Complete | 本机 linux/amd64 多阶段镜像构建、配置接口、嵌入首页、健康检查、非 root 用户和数据卷写入验证通过；arm64 使用原生 Runner 构建 |
 | 核心 HTTP 回归测试 | Complete | 使用内存数据库与临时存储覆盖配置、初始化、登录、当前用户、目录读取和未认证写入拒绝 |
 | GitHub Issue 流程 | Pending verification | 已增加中文 Bug 与功能建议表单并更新贡献指南；待文件推送后启用仓库 Issues |
 
@@ -153,7 +153,7 @@
 
 ## M4 稳定版发布
 
-> M4 的代码、迁移、文档、可复现构建、备份演练和 linux/amd64 容器验收已完成。当前旧版 Docker/QEMU 在运行 arm64 Go 工具时崩溃，且按维护者要求不推送远端，无法取得 GitHub Runner 结果，因此里程碑保持 Blocked，不伪造多架构通过。
+> M4 的代码、迁移、文档、可复现构建、备份演练和 linux/amd64 容器验收已完成。发布流水线已改为在 amd64 与 arm64 原生 GitHub Runner 上分别构建，再合并 Docker manifest；按维护者要求尚未推送远端，无法取得 Runner 结果，因此里程碑保持 Blocked，不伪造多架构通过。
 
 ### 范围
 
@@ -213,3 +213,4 @@
 | 2026-07-31 | M3 | 完成 SQLite 文件索引、启动重建、增量刷新、名称/路径/小文本搜索，以及可过期可撤销分享 | 搜索容量上限、分享范围/过期/撤销、公开 HTTP 访问和前端分享管理验证通过 |
 | 2026-07-31 | M4 | 完成 schema 版本、旧库迁移测试、备份恢复文档与脚本、发布和安全清单、可复现构建参数 | 两次生产构建 SHA-256 一致；备份归档演练、单二进制冒烟、linux/amd64 镜像健康和非 root 验收通过 |
 | 2026-07-31 | M4 | arm64 本地验收阻塞 | 旧版 QEMU 在 arm64 `go mod download` 中触发 Go runtime `sync: inconsistent mutex state`；需升级 Docker/QEMU 或由 GitHub Runner 验证 |
+| 2026-07-31 | M4 | 移除 Buildx/QEMU 构建路径，改用 GitHub 原生双架构 Runner | 每个架构使用普通 `go build`、`docker build` 和镜像冒烟，发布时用 `docker manifest` 合并架构镜像；等待首次远端运行验收 |

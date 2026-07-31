@@ -36,7 +36,7 @@ help:
 		'  make check         运行格式、静态检查、测试和前端构建' \
 		'  make build         构建当前平台的生产二进制' \
 		'  make smoke         验证已构建的生产二进制' \
-		'  make cross-build   构建 Linux amd64/arm64 发布产物' \
+		'  make cross-build   使用本机 GNU 交叉工具链构建双架构产物（备用）' \
 		'  make clean         清理所有生成物'
 
 install: install-frontend install-backend

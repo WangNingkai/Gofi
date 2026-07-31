@@ -27,4 +27,4 @@
 
 ## 当前阻塞
 
-本机旧版 Docker/QEMU 执行 arm64 Go 工具时会触发 Go runtime 状态错误。linux/arm64 和多架构 Docker 两项必须在升级本机 Docker/QEMU，或允许推送后由 GitHub Runner 通过，才能勾选并解除 M4 阻塞。
+发布流水线已取消 Buildx 与 QEMU，改为在 `ubuntu-24.04` 和 `ubuntu-24.04-arm` 上分别执行普通构建，再合并 Docker manifest。按维护者要求当前不推送远端；linux/arm64 和多架构 Docker 两项必须由首次 GitHub Runner 运行通过，才能勾选并解除 M4 阻塞。
