@@ -4,7 +4,7 @@ import (
 	"gofi/env"
 	"gofi/repository"
 
-	"github.com/go-xorm/xorm"
+	"xorm.io/xorm"
 )
 
 type Application struct {

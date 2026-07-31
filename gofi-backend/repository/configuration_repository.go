@@ -3,7 +3,7 @@ package repository
 import (
 	"gofi/db"
 
-	"github.com/go-xorm/xorm"
+	"xorm.io/xorm"
 )
 
 // ConfigurationRepository 配置数据访问接口

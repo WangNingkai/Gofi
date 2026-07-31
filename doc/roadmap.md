@@ -214,3 +214,4 @@
 | 2026-07-31 | M4 | 完成 schema 版本、旧库迁移测试、备份恢复文档与脚本、发布和安全清单、可复现构建参数 | 两次生产构建 SHA-256 一致；备份归档演练、单二进制冒烟、linux/amd64 镜像健康和非 root 验收通过 |
 | 2026-07-31 | M4 | arm64 本地验收阻塞 | 旧版 QEMU 在 arm64 `go mod download` 中触发 Go runtime `sync: inconsistent mutex state`；需升级 Docker/QEMU 或由 GitHub Runner 验证 |
 | 2026-07-31 | M4 | 移除 Buildx/QEMU 构建路径，改用 GitHub 原生双架构 Runner | 每个架构使用普通 `go build`、`docker build` 和镜像冒烟，发布时用 `docker manifest` 合并架构镜像；等待首次远端运行验收 |
+| 2026-07-31 | M4 | 将归档的 `github.com/go-xorm/xorm` 与 CGO SQLite 驱动迁移到 `xorm.io/xorm` 和 `modernc.org/sqlite` | 完整 race、无 CGO 后端测试、旧库 schema/UTC 时间兼容、双架构静态产物、单二进制和 Docker 冒烟通过 |

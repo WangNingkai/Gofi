@@ -11,7 +11,6 @@ PNPM ?= pnpm
 MODE ?= production
 TARGET_OS ?= $(shell $(GO) env GOOS)
 TARGET_ARCH ?= $(shell $(GO) env GOARCH)
-CC ?= cc
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct 2>/dev/null || echo 0)
 OUTPUT_NAME := gofi-$(TARGET_OS)-$(TARGET_ARCH)-$(MODE)
@@ -36,7 +35,7 @@ help:
 		'  make check         运行格式、静态检查、测试和前端构建' \
 		'  make build         构建当前平台的生产二进制' \
 		'  make smoke         验证已构建的生产二进制' \
-		'  make cross-build   使用本机 GNU 交叉工具链构建双架构产物（备用）' \
+		'  make cross-build   构建 Linux amd64/arm64 发布产物' \
 		'  make clean         清理所有生成物'
 
 install: install-frontend install-backend
@@ -94,7 +93,7 @@ stage-frontend: clean-backend-dist
 build-backend:
 	mkdir -p $(OUTPUT_DIR)
 	cd $(BACKEND_DIR) && \
-		CGO_ENABLED=1 GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) CC="$(CC)" \
+		CGO_ENABLED=0 GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) \
 		$(GO) build -tags=$(MODE) \
 		-trimpath -buildvcs=false \
 		-ldflags="-w -s -buildid= -X gofi/db.version=$(VERSION)" \
@@ -104,10 +103,10 @@ smoke:
 	sh scripts/smoke.sh "$(OUTPUT_DIR)/$(OUTPUT_NAME)"
 
 build-linux-amd64:
-	$(MAKE) build-backend TARGET_OS=linux TARGET_ARCH=amd64 CC=gcc
+	$(MAKE) build-backend TARGET_OS=linux TARGET_ARCH=amd64
 
 build-linux-arm64:
-	$(MAKE) build-backend TARGET_OS=linux TARGET_ARCH=arm64 CC=aarch64-linux-gnu-gcc
+	$(MAKE) build-backend TARGET_OS=linux TARGET_ARCH=arm64
 
 cross-build: clean-output build-frontend stage-frontend build-linux-amd64 build-linux-arm64 checksums
 

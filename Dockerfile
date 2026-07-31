@@ -16,12 +16,11 @@ FROM golang:${GO_VERSION}-alpine AS backend
 ARG VERSION=dev
 WORKDIR /src
 
-RUN apk add --no-cache build-base
 COPY gofi-backend/go.mod gofi-backend/go.sum ./
 RUN go mod download
 COPY gofi-backend/ ./
 COPY --from=frontend /src/gofi-frontend/dist ./env/dist
-RUN CGO_ENABLED=1 go build \
+RUN CGO_ENABLED=0 go build \
     -tags=production \
     -trimpath -buildvcs=false \
     -ldflags="-w -s -buildid= -X gofi/db.version=${VERSION}" \

@@ -6,7 +6,6 @@
 - Node.js 24.14.1 LTS
 - pnpm 10.34.5
 - GNU Make
-- C 编译器（SQLite 驱动需要 CGO）
 
 仓库根目录的 `.go-version`、`.node-version` 和前端 `packageManager` 字段记录了当前工具版本。
 
@@ -55,6 +54,7 @@ make smoke
 ```
 
 构建产物及 SHA-256 校验文件位于 `output/`。生产二进制已经嵌入前端资源。
+后端使用纯 Go SQLite 驱动，构建不依赖 CGO 或本机 C 编译器。
 
 ## 构建 Docker 镜像
 

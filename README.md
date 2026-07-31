@@ -26,7 +26,7 @@ Gofi is a modern, open-source web file indexer and manager, featuring a fully re
 
 ## 🚀 Quick Start
 
-Requirements: Go 1.26.5, Node.js 24.14.1 LTS, pnpm 10.34.5, GNU Make, and a C compiler.
+Requirements: Go 1.26.5, Node.js 24.14.1 LTS, pnpm 10.34.5, and GNU Make.
 
 ### Install and start
 

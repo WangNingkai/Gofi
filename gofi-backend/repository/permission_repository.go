@@ -3,7 +3,7 @@ package repository
 import (
 	"gofi/db"
 
-	"github.com/go-xorm/xorm"
+	"xorm.io/xorm"
 )
 
 type PermissionRepository interface {

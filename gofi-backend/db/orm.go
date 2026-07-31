@@ -5,15 +5,17 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/go-xorm/xorm"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
+	"xorm.io/xorm"
 )
 
 var engine *xorm.Engine
 var engineMutex sync.RWMutex
 
+const sqliteDriverName = "sqlite"
+
 func Open(dataSourceName string, showSQL bool) error {
-	newEngine, err := xorm.NewEngine("sqlite3", dataSourceName)
+	newEngine, err := xorm.NewEngine(sqliteDriverName, dataSourceName)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}

@@ -82,7 +82,7 @@ jobs:
         run: make install
 
       - name: 构建当前原生架构
-        run: make build TARGET_OS=linux TARGET_ARCH=${{ matrix.arch }} CC=gcc VERSION="${{ github.ref_name }}"
+        run: make build TARGET_OS=linux TARGET_ARCH=${{ matrix.arch }} VERSION="${{ github.ref_name }}"
 
       - name: 验证生产二进制
         run: make smoke TARGET_OS=linux TARGET_ARCH=${{ matrix.arch }}

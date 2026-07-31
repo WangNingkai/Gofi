@@ -159,6 +159,7 @@ gofi-frontend/src/
 ## 数据与迁移
 
 - SQLite 在应用启动流程中显式打开并执行可重复 schema 同步，包初始化不创建文件或修改数据。
+- 数据库适配使用 `xorm.io/xorm` 与纯 Go `modernc.org/sqlite`，生产构建关闭 CGO。
 - `schema_migration` 记录当前 schema 版本；高于程序支持版本的数据库会拒绝启动。
 - 密码散列升级采用登录时迁移或一次性迁移策略，不能让现有用户静默失效。
 - 配置读取顺序和默认值必须文档化。

@@ -5,7 +5,7 @@ import (
 
 	"gofi/db"
 
-	"github.com/go-xorm/xorm"
+	"xorm.io/xorm"
 )
 
 type FileIndexRepository interface {
