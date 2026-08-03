@@ -94,7 +94,11 @@ jobs:
           VERSION="${{ steps.version.outputs.value }}"
 
       - name: 验证测试包中的生产二进制
-        run: make smoke TARGET_OS=linux TARGET_ARCH=${{ matrix.arch }}
+        run: >-
+          make smoke
+          TARGET_OS=linux
+          TARGET_ARCH=${{ matrix.arch }}
+          VERSION="${{ steps.version.outputs.value }}"
 
       - name: 上传测试部署包
         uses: actions/upload-artifact@v7
