@@ -43,7 +43,7 @@ gofi-backend/
   application/   认证、配置、文件和权限用例
   controller/    Gin 输入输出适配
   repository/    SQLite 数据访问适配
-  storage/       本地文件系统安全边界
+  localfs/       本地文件系统安全边界
   middleware/    认证、安全、Trace 和请求治理
   db/            显式数据库打开、迁移和关闭
 ```

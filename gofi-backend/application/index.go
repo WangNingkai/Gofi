@@ -9,8 +9,8 @@ import (
 
 	"gofi/db"
 	"gofi/env"
+	"gofi/localfs"
 	"gofi/repository"
-	"gofi/storage"
 	"gofi/tool"
 )
 
@@ -82,7 +82,7 @@ func (service *IndexService) scan(logical string) (repository.FileIndexProducer,
 	if err != nil {
 		return nil, err
 	}
-	local, err := storage.NewLocal(root)
+	local, err := localfs.NewLocal(root)
 	if err != nil {
 		return nil, err
 	}

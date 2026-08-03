@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"gofi/db"
-	"gofi/storage"
+	"gofi/localfs"
 	"gofi/tool"
 )
 
@@ -139,7 +139,7 @@ func (service *FileService) Upload(
 	}
 
 	for _, header := range headers {
-		if err := storage.ValidateName(header.Filename); err != nil {
+		if err := localfs.ValidateName(header.Filename); err != nil {
 			return fmt.Errorf("%w: invalid file name", ErrInvalidInput)
 		}
 		finalPath := filepath.Join(directory, header.Filename)
@@ -178,7 +178,7 @@ func (service *FileService) Delete(logicalPath string) error {
 }
 
 func (service *FileService) CreateDirectory(parent, name string) error {
-	if err := storage.ValidateName(name); err != nil {
+	if err := localfs.ValidateName(name); err != nil {
 		return fmt.Errorf("%w: invalid directory name", ErrInvalidInput)
 	}
 	local, err := service.local()
@@ -208,7 +208,7 @@ func (service *FileService) CreateDirectory(parent, name string) error {
 }
 
 func (service *FileService) Rename(source, name string, overwrite bool) error {
-	if err := storage.ValidateName(name); err != nil {
+	if err := localfs.ValidateName(name); err != nil {
 		return fmt.Errorf("%w: invalid name", ErrInvalidInput)
 	}
 	parent := normalizeLogicalPath(filepath.ToSlash(filepath.Dir(source)))
@@ -291,7 +291,7 @@ func (service *FileService) Batch(operations []BatchFileOperation) []BatchFileRe
 	return results
 }
 
-func (service *FileService) operationPaths(source, destination string) (*storage.Local, string, string, error) {
+func (service *FileService) operationPaths(source, destination string) (*localfs.Local, string, string, error) {
 	if normalizeLogicalPath(source) == "/" || normalizeLogicalPath(destination) == "/" {
 		return nil, "", "", fmt.Errorf("%w: storage root cannot be moved", ErrInvalidInput)
 	}
@@ -318,16 +318,16 @@ func (service *FileService) operationPaths(source, destination string) (*storage
 	return local, sourcePath, destinationPath, nil
 }
 
-func (service *FileService) local() (*storage.Local, error) {
+func (service *FileService) local() (*localfs.Local, error) {
 	root, err := service.configuration.StorageRoot()
 	if err != nil {
 		return nil, err
 	}
-	return storage.NewLocal(root)
+	return localfs.NewLocal(root)
 }
 
 func (service *FileService) readDirectory(
-	local *storage.Local,
+	local *localfs.Local,
 	absolute string,
 	logical string,
 ) (*db.DirectoryData, error) {
@@ -580,7 +580,7 @@ func publicErrorName(err error) string {
 
 func mapStorageError(err error) error {
 	switch {
-	case errors.Is(err, storage.ErrInvalidPath), errors.Is(err, storage.ErrPathEscape):
+	case errors.Is(err, localfs.ErrInvalidPath), errors.Is(err, localfs.ErrPathEscape):
 		return ErrForbidden
 	case os.IsNotExist(err):
 		return ErrNotFound

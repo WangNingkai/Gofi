@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"gofi/storage"
+	"gofi/localfs"
 )
 
 const (
@@ -62,7 +62,7 @@ func (service *ResumableUploadService) SetChangeHook(hook func(...string)) {
 }
 
 func (service *ResumableUploadService) Create(input CreateUploadSessionInput) (*UploadSession, error) {
-	if storage.ValidateName(input.Name) != nil || input.Size < 0 || input.Size > maxUploadSize ||
+	if localfs.ValidateName(input.Name) != nil || input.Size < 0 || input.Size > maxUploadSize ||
 		input.ChunkSize < minChunkSize || input.ChunkSize > maxChunkSize || !validSHA256(input.SHA256) {
 		return nil, ErrInvalidInput
 	}
@@ -330,12 +330,12 @@ func (service *ResumableUploadService) save(session *UploadSession) error {
 	return os.Rename(tempPath, filepath.Join(directory, "session.json"))
 }
 
-func (service *ResumableUploadService) local() (*storage.Local, error) {
+func (service *ResumableUploadService) local() (*localfs.Local, error) {
 	root, err := service.configuration.StorageRoot()
 	if err != nil {
 		return nil, err
 	}
-	return storage.NewLocal(root)
+	return localfs.NewLocal(root)
 }
 
 func (service *ResumableUploadService) uploadRoot() (string, error) {
