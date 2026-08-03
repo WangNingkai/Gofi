@@ -3,6 +3,7 @@ package repository_test
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -13,8 +14,12 @@ import (
 )
 
 func TestReplaceAllInBatches(t *testing.T) {
-	require.NoError(t, db.Open(filepath.Join(t.TempDir(), "index.db"), false))
+	databasePath := filepath.Join(t.TempDir(), "index.db")
+	require.NoError(t, db.Open(databasePath, false))
 	t.Cleanup(func() { require.NoError(t, db.Close()) })
+	db.Engine().SetMaxOpenConns(1)
+	_, err := db.Engine().Exec("PRAGMA wal_autocheckpoint=0")
+	require.NoError(t, err)
 
 	entries := make([]db.FileIndex, fileIndexTestEntryCount)
 	for index := range entries {
@@ -28,6 +33,10 @@ func TestReplaceAllInBatches(t *testing.T) {
 	count, err := db.Engine().Count(new(db.FileIndex))
 	require.NoError(t, err)
 	require.EqualValues(t, fileIndexTestEntryCount, count)
+
+	wal, err := os.Stat(databasePath + "-wal")
+	require.NoError(t, err)
+	require.Zero(t, wal.Size())
 }
 
 func TestReplaceAllRollsBackWhenProducerFails(t *testing.T) {

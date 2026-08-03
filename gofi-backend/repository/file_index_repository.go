@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"strings"
 
 	"gofi/db"
@@ -28,7 +29,12 @@ func NewFileIndexRepository(engine *xorm.Engine) FileIndexRepository {
 
 func (repository *fileIndexRepository) ReplaceAll(produce FileIndexProducer) error {
 	session := repository.engine.NewSession()
-	defer session.Close()
+	closed := false
+	defer func() {
+		if !closed {
+			_ = session.Close()
+		}
+	}()
 	if err := session.Begin(); err != nil {
 		return err
 	}
@@ -40,7 +46,17 @@ func (repository *fileIndexRepository) ReplaceAll(produce FileIndexProducer) err
 		_ = session.Rollback()
 		return err
 	}
-	return session.Commit()
+	if err := session.Commit(); err != nil {
+		return err
+	}
+	if err := session.Close(); err != nil {
+		return err
+	}
+	closed = true
+	if _, err := repository.engine.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+		return fmt.Errorf("checkpoint file index WAL: %w", err)
+	}
+	return nil
 }
 
 func (repository *fileIndexRepository) ReplacePrefix(prefix string, produce FileIndexProducer) error {
