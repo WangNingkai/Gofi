@@ -23,7 +23,7 @@ import {
     Upload,
     Filter
 } from 'lucide-react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router'
 import {
@@ -85,6 +85,7 @@ import { searchFiles, type SearchResult } from '@/features/search/api'
 import { readSessionToken } from '@/features/auth/session'
 import { useAtom } from 'jotai'
 import { fileViewModeState } from '@/features/preferences/fileViewMode'
+import { fileTypeLabelKey, filterAndSortFiles, type FileTypeFilter } from '@/features/files/listModel'
 
 interface FilesProps {
     directoryData?: DirectoryData
@@ -95,12 +96,11 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
     const location = useLocation()
     const navigate = useNavigate()
     const uploadRef = useRef<HTMLInputElement>(null)
-    const [currentPath, setCurrentPath] = useState<string>('/')
     const [uploadFiles, setUploadFiles] = useState<File[]>([])
     const [showUploadDialog, setShowUploadDialog] = useState(false)
     const [searchQuery, setSearchQuery] = useState<string>('')
     const [viewMode, setViewMode] = useAtom(fileViewModeState)
-    const [fileTypeFilter, setFileTypeFilter] = useState<string>('all')
+    const [fileTypeFilter, setFileTypeFilter] = useState<FileTypeFilter>('all')
     const { capabilities } = useAccessCapabilities()
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [deletingItem, setDeletingItem] = useState<FileInfo | null>(null)
@@ -121,11 +121,16 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
     const searchInputRef = useRef<HTMLInputElement>(null)
     const breadcrumbRef = useRef<HTMLDivElement>(null)
 
-    // 路径监听
+    const currentPath = useMemo(
+        () => PathUtil.extractPathFromUrl(location.pathname),
+        [location.pathname],
+    )
+
     useEffect(() => {
-        const newPath = PathUtil.extractPathFromUrl(location.pathname)
-        setCurrentPath(newPath)
-    }, [location.pathname])
+        setSelectedPaths(new Set())
+        setSearchQuery('')
+        setFileTypeFilter('all')
+    }, [currentPath])
 
     useEffect(() => {
         if (breadcrumbRef.current) {
@@ -155,7 +160,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
         useDirectory(currentPath, directoryData)
 
     // 目录操作
-    const hasParentDirectory = () => currentPath !== '/' && currentPath.lastIndexOf('/') > 0
+    const hasParentDirectory = () => currentPath !== '/'
     const parentPath = () => {
         if (currentPath === '/' || !currentPath) return '/'
         const idx = currentPath.lastIndexOf('/')
@@ -182,22 +187,10 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
     }
 
     // 过滤文件列表
-    const filteredFiles = fileInfos?.filter((file) => {
-        // 搜索过滤
-        const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase())
-        
-        // 文件类型过滤
-        let matchesType = true
-        if (fileTypeFilter !== 'all') {
-            if (file.isDirectory) {
-                matchesType = fileTypeFilter === 'folder'
-            } else {
-                matchesType = file.fileType === fileTypeFilter
-            }
-        }
-        
-        return matchesSearch && matchesType
-    }) || []
+    const filteredFiles = useMemo(
+        () => filterAndSortFiles(fileInfos, searchQuery, fileTypeFilter),
+        [fileInfos, fileTypeFilter, searchQuery],
+    )
 
     // 跳转
     const onFileNameClick = (fileinfo: FileInfo) => {
@@ -467,6 +460,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                             <TooltipTrigger asChild>
                                 <Button variant="ghost" size="sm" onClick={navigateToRootDirectory} className="h-8 w-8 p-0 flex-shrink-0">
                                     <Home className="h-4 w-4" />
+                                    <span className="sr-only">{t('tooltip.home')}</span>
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent>
@@ -481,6 +475,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                 <TooltipTrigger asChild>
                                     <Button variant="ghost" size="sm" onClick={navigateToParentDirectory} className="h-8 w-8 p-0">
                                         <ChevronLeft className="h-4 w-4" />
+                                        <span className="sr-only">{t('tooltip.back')}</span>
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
@@ -599,6 +594,8 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 p-0"
+                                aria-label={t('common.action.search')}
+                                aria-expanded={searchOpen}
                                 onClick={() => {
                                     setSearchOpen(true)
                                 }}
@@ -652,6 +649,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
                                     <Filter className="h-4 w-4" />
+                                    <span className="sr-only">{t('common.action.filter')}</span>
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start">
@@ -700,6 +698,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                     <TooltipTrigger asChild>
                                         <Button onClick={() => openOperation('mkdir')} variant="ghost" size="icon" className="h-8 w-8 p-0">
                                             <FolderPlus className="h-4 w-4" />
+                                            <span className="sr-only">{t('pages.file-list.new-folder')}</span>
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent><p>{t('pages.file-list.new-folder')}</p></TooltipContent>
@@ -717,6 +716,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                         uploadRef.current?.click()
                                     }} variant="ghost" size="icon" className="h-8 w-8 p-0">
                                         <Upload className="h-4 w-4" />
+                                        <span className="sr-only">{t('tooltip.upload')}</span>
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
@@ -731,10 +731,12 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                     <Button 
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => mutate()}
+                                        onClick={() => void mutate()}
+                                        disabled={isValidating}
+                                        aria-label={t('tooltip.refresh')}
                                         className="h-8 w-8 p-0"
                                     >
-                                        <RefreshCw className="h-4 w-4" />
+                                        <RefreshCw className={`h-4 w-4 ${isValidating ? 'animate-spin' : ''}`} />
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
@@ -748,6 +750,8 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                 variant={viewMode === 'grid' ? 'default' : 'ghost'}
                                 size="sm"
                                 onClick={() => setViewMode('grid')}
+                                aria-label={t('pages.setting.display.grid')}
+                                aria-pressed={viewMode === 'grid'}
                                 className="h-8 w-8 p-0"
                             >
                                 <Grid3X3 className="h-4 w-4" />
@@ -756,6 +760,8 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                 variant={viewMode === 'list' ? 'default' : 'ghost'}
                                 size="sm"
                                 onClick={() => setViewMode('list')}
+                                aria-label={t('pages.setting.display.list')}
+                                aria-pressed={viewMode === 'list'}
                                 className="h-8 w-8 p-0"
                             >
                                 <List className="h-4 w-4" />
@@ -778,7 +784,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
 
     // 渲染文件列表
     const renderFileList = () => {
-        if (fetching || isValidating) {
+        if (fetching && !fileInfos) {
             return (
                 <div className="flex flex-col items-center justify-center py-16">
                     <LogoLoading className="mb-4" />
@@ -810,14 +816,14 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                     </div>
                     <h3 className="text-lg font-medium text-foreground mb-2">{t('pages.file-list.empty-folder.title')}</h3>
                     <p className="text-muted-foreground mb-6">{t('pages.file-list.empty-folder.description')}</p>
-                    <Button onClick={() => setShowUploadDialog(true)} disabled={!capabilities.upload}>
+                    <Button onClick={() => uploadRef.current?.click()} disabled={!capabilities.upload}>
                         {t('pages.file-list.upload-files')}
                     </Button>
                 </div>
             )
         }
 
-        if (searchQuery && filteredFiles.length === 0) {
+        if ((searchQuery || fileTypeFilter !== 'all') && filteredFiles.length === 0) {
             return (
                 <div className="flex flex-col items-center justify-center py-16">
                     <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-6">
@@ -844,7 +850,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                 {fileTypeFilter !== 'all' && (
                                     <>
                                         <FileIcon iconType={fileTypeFilter} className="inline-block w-4 h-4 mr-1 align-text-bottom" />
-                                        {getFileTypeLabel(filesToShow[0] as FileInfo)}
+                                        {t(fileTypeLabelKey(fileTypeFilter))}
                                     </>
                                 )}
                             </span>
