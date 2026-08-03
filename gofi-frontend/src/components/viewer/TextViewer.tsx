@@ -1,14 +1,15 @@
 import { AlertTriangle, ArrowLeft, Download, File } from 'lucide-react'
-import React, { useEffect, useState } from 'react'
+import React, { lazy, Suspense, useDeferredValue, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AiOutlineFileMarkdown } from 'react-icons/ai'
-import ReactMarkdown from 'react-markdown'
 import { FormatUtil } from '../../utils/format.util'
 import Toast from '../../utils/toast.util'
 import LogoLoading from '../LogoLoading'
-import ShikiHighlighter from '../ShikiHighlighter'
 import { Button } from '../ui/button'
 import TextViewerToolbar from './TextViewerToolbar'
+
+const MarkdownPreview = lazy(() => import('./MarkdownPreview'))
+const ShikiHighlighter = lazy(() => import('../ShikiHighlighter'))
 
 interface IProps {
     url?: string
@@ -19,9 +20,14 @@ interface IProps {
     // 工具栏简化属性
     currentPath?: string
     onReturn?: () => void
+    onRoot?: () => void
     onNewWindow?: () => void
     onDownload?: () => void
 }
+
+export const INITIAL_TEXT_PREVIEW_LENGTH = 12_000
+export const MAX_HIGHLIGHT_LENGTH = 60_000
+export const MAX_MARKDOWN_RENDER_LENGTH = 100_000
 
 const TextViewer: React.FC<IProps> = ({
     url,
@@ -30,10 +36,12 @@ const TextViewer: React.FC<IProps> = ({
     fileInfo,
     currentPath,
     onReturn,
+    onRoot,
     onNewWindow,
     onDownload,
 }) => {
     const [plainText, setPlainText] = useState<string>()
+    const [isLoading, setIsLoading] = useState(true)
     const [showLineNumbers, setShowLineNumbers] = useState(true)
     const [isValidText, setIsValidText] = useState(true)
     const { t } = useTranslation()
@@ -45,6 +53,7 @@ const TextViewer: React.FC<IProps> = ({
 
     // 判断高亮语言是否支持 lock，不支持则降级为 plaintext
     const safeLanguage = language === 'lock' || language === '' || language === undefined ? 'plaintext' : language
+    const supportsSyntaxHighlight = safeLanguage !== 'plaintext'
 
     // 获取当前主题
     const isDark = typeof window !== 'undefined' && document.documentElement.classList.contains('dark')
@@ -68,35 +77,40 @@ const TextViewer: React.FC<IProps> = ({
     }, [])
 
     useEffect(() => {
-        if (content) {
+        setShowFullText(false)
+        setIsLoading(true)
+        if (content !== undefined) {
             const isValid = validateTextContent(content)
             setIsValidText(isValid)
-            if (isValid) {
-                setPlainText(content)
-            } else {
-                setPlainText(undefined)
-            }
-            return
+            setPlainText(isValid ? content : undefined)
+            setIsLoading(false)
+            return undefined
         }
 
         if (url) {
-            ;(async () => {
+            const controller = new AbortController()
+            void (async () => {
                 try {
-                    const value = await (await fetch(url)).text()
+                    const response = await fetch(url, { signal: controller.signal })
+                    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`)
+                    const value = await response.text()
                     const isValid = validateTextContent(value)
                     setIsValidText(isValid)
-                    if (isValid) {
-                        setPlainText(value)
-                    } else {
-                        setPlainText(undefined)
-                    }
+                    setPlainText(isValid ? value : undefined)
                 } catch (err) {
+                    if (controller.signal.aborted) return
                     Toast.e(`${err}`)
                     setIsValidText(false)
                     setPlainText(undefined)
+                } finally {
+                    if (!controller.signal.aborted) setIsLoading(false)
                 }
             })()
+            return () => controller.abort()
         }
+        setPlainText('')
+        setIsLoading(false)
+        return undefined
     }, [url, content])
 
     const handleToggleLineNumbers = () => {
@@ -104,25 +118,28 @@ const TextViewer: React.FC<IProps> = ({
     }
 
     // 计算是否需要截断
-    const MAX_PREVIEW_LENGTH = 5000
-    const isLongText = !!plainText && plainText.length > MAX_PREVIEW_LENGTH
-    const displayText = plainText
+    const isLongText = !!plainText && plainText.length > INITIAL_TEXT_PREVIEW_LENGTH
+    const displayTextValue = plainText
         ? isLongText && !showFullText
-            ? plainText.slice(0, MAX_PREVIEW_LENGTH)
+            ? plainText.slice(0, INITIAL_TEXT_PREVIEW_LENGTH)
             : plainText
         : ''
+    const displayText = useDeferredValue(displayTextValue)
+    const shouldHighlight = displayText.length <= MAX_HIGHLIGHT_LENGTH
+    const shouldRenderMarkdown = displayText.length <= MAX_MARKDOWN_RENDER_LENGTH
 
     // 如果内容不是有效的文本，显示错误页面
     if (!isValidText) {
         return (
-            <div className="w-full max-h-[600px] flex flex-col relative">
+            <div className="relative flex h-[calc(100dvh-12rem)] min-h-[360px] w-full flex-col">
                 {/* 工具栏组件 */}
                 <TextViewerToolbar
                     currentPath={currentPath}
                     onReturn={onReturn}
+                    onRoot={onRoot}
                     onNewWindow={onNewWindow}
                     onDownload={onDownload}
-                    onToggleLineNumbers={isMarkdown && previewMode === 'preview' ? undefined : handleToggleLineNumbers}
+                    onToggleLineNumbers={!supportsSyntaxHighlight || (isMarkdown && previewMode === 'preview') ? undefined : handleToggleLineNumbers}
                     showLineNumbers={showLineNumbers}
                     rightExtra={
                         isMarkdown && (
@@ -212,14 +229,15 @@ const TextViewer: React.FC<IProps> = ({
     }
 
     return (
-        <div className="w-full max-h-[600px] flex flex-col relative">
+        <div className="relative flex h-[calc(100dvh-12rem)] min-h-[360px] w-full flex-col">
             {/* 工具栏组件 */}
             <TextViewerToolbar
                 currentPath={currentPath}
                 onReturn={onReturn}
+                onRoot={onRoot}
                 onNewWindow={onNewWindow}
                 onDownload={onDownload}
-                onToggleLineNumbers={isMarkdown && previewMode === 'preview' ? undefined : handleToggleLineNumbers}
+                onToggleLineNumbers={!supportsSyntaxHighlight || (isMarkdown && previewMode === 'preview') ? undefined : handleToggleLineNumbers}
                 showLineNumbers={showLineNumbers}
                 rightExtra={
                     isMarkdown && (
@@ -243,13 +261,25 @@ const TextViewer: React.FC<IProps> = ({
             />
             {/* 文本内容 */}
             <div className="flex-1 overflow-auto">
-                {displayText ? (
-                    isMarkdown && previewMode === 'preview' ? (
+                {isLoading ? (
+                    <div className="flex h-full flex-col items-center justify-center">
+                        <LogoLoading />
+                        <span className="mt-2 text-sm font-medium text-muted-foreground">
+                            {t('component.viewer.loading')}
+                        </span>
+                    </div>
+                ) : displayText.length === 0 ? (
+                    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                        {t('common.status.empty')}
+                    </div>
+                ) : isMarkdown && previewMode === 'preview' && shouldRenderMarkdown ? (
                         <div
                             className={`markdown-body vscode-markdown ${document.documentElement.classList.contains('dark') ? 'vscode-dark' : 'vscode-light'} px-4 py-2`}
                             style={{ fontSize: '15px', lineHeight: '1.7' }}
                         >
-                            <ReactMarkdown>{displayText}</ReactMarkdown>
+                            <Suspense fallback={<LogoLoading />}>
+                                <MarkdownPreview content={displayText} />
+                            </Suspense>
                             {isLongText && !showFullText && (
                                 <div className="flex justify-center mt-4">
                                     <Button variant="outline" size="sm" onClick={() => setShowFullText(true)}>
@@ -258,28 +288,31 @@ const TextViewer: React.FC<IProps> = ({
                                 </div>
                             )}
                         </div>
-                    ) : (
-                        <ShikiHighlighter
-                            key={themeVersion}
-                            code={displayText}
-                            language={safeLanguage}
-                            theme={shikiTheme}
-                            className="shiki px-4 py-2"
-                            style={{ width: '100%', height: '100%', fontSize: '14px', lineHeight: '1.5', margin: 0 }}
-                            showLineNumbers={showLineNumbers}
-                        />
-                    )
                 ) : (
-                    (
-                        <>
-                            <LogoLoading />
-                            <div className="text-center mt-2">
-                                <span className="text-sm text-muted-foreground font-medium">
-                                    {t('component.viewer.loading')}
-                                </span>
+                    <div className="min-h-full">
+                        {shouldHighlight && supportsSyntaxHighlight ? (
+                            <Suspense fallback={<div className="flex justify-center p-8"><LogoLoading /></div>}>
+                                <ShikiHighlighter
+                                    key={themeVersion}
+                                    code={displayText}
+                                    language={safeLanguage}
+                                    theme={shikiTheme}
+                                    className="shiki px-4 py-2"
+                                    style={{ width: '100%', minHeight: '100%', fontSize: '14px', lineHeight: '1.5', margin: 0 }}
+                                    showLineNumbers={showLineNumbers}
+                                />
+                            </Suspense>
+                        ) : (
+                            <pre className="min-h-full whitespace-pre p-4 font-mono text-sm leading-6">{displayText}</pre>
+                        )}
+                        {isLongText && !showFullText && (
+                            <div className="sticky bottom-0 flex justify-center border-t bg-background/95 p-3 backdrop-blur">
+                                <Button variant="outline" size="sm" onClick={() => setShowFullText(true)}>
+                                    {t('component.viewer.show-more')}
+                                </Button>
                             </div>
-                        </>
-                    )
+                        )}
+                    </div>
                 )}
             </div>
         </div>

@@ -8,6 +8,7 @@ interface IProps {
     // 工具栏简化属性
     currentPath?: string
     onReturn?: () => void
+    onRoot?: () => void
     onNewWindow?: () => void
     onDownload?: () => void
     onBackToOriginal?: () => void
@@ -23,11 +24,12 @@ const VideoViewer: React.FC<IProps> = (props) => {
             <ViewerToolbar
                 currentPath={props.currentPath}
                 onReturn={props.onReturn}
+                onRoot={props.onRoot}
                 onNewWindow={props.onNewWindow}
                 onDownload={props.onDownload}
             />
             {/* 视频播放器容器 - 适配视频长宽比 */}
-            <div className="w-full bg-black overflow-hidden flex items-center justify-center h-[600px]">
+            <div className="flex h-[calc(100dvh-12rem)] min-h-[360px] w-full items-center justify-center overflow-hidden bg-black">
                 <video
                     src={props.url}
                     controls

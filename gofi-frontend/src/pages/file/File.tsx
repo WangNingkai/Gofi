@@ -225,6 +225,7 @@ const File: React.FC<FileProps> = ({ fileData }) => {
             previewableFileType !== 'text' || Boolean(fileInfo && fileInfo.size > 0 && !fileInfo.content)
         const onDownload = capabilities.download ? () => window.open(downloadUrl, '_blank') : undefined
         const onNewWindow = capabilities.download ? () => window.open(previewUrl, '_blank') : undefined
+        const onRoot = () => navigate('/file/')
 
         if (requiresDownload && !capabilities.download) {
             return (
@@ -265,6 +266,7 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                         }}
                         currentPath={currentPath}
                         onReturn={() => navigate(PathUtil.buildFileUrl(PathUtil.parentPath(currentPath)))}
+                        onRoot={onRoot}
                         onDownload={onDownload}
                         onNewWindow={onNewWindow}
                     />
@@ -279,6 +281,7 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                         onDownload={onDownload}
                         onNewWindow={onNewWindow}
                         onReturn={() => navigate(PathUtil.buildFileUrl(PathUtil.parentPath(currentPath)))}
+                        onRoot={onRoot}
                         currentPath={currentPath}
                         onNavigateBreadcrumb={(path) => navigate(PathUtil.buildFileUrl(path))}
                         onBackToOriginal={currentImageIndex !== 0 ? () => handleImageChange(0) : undefined}
@@ -291,6 +294,7 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                         url={previewUrl}
                         currentPath={currentPath}
                         onReturn={() => navigate(PathUtil.buildFileUrl(PathUtil.parentPath(currentPath)))}
+                        onRoot={onRoot}
                         onDownload={onDownload}
                         onNewWindow={onNewWindow}
                     />
@@ -301,6 +305,7 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                         url={previewUrl}
                         currentPath={currentPath}
                         onReturn={() => navigate(PathUtil.buildFileUrl(PathUtil.parentPath(currentPath)))}
+                        onRoot={onRoot}
                         onDownload={onDownload}
                         onNewWindow={onNewWindow}
                     />
@@ -311,6 +316,7 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                         url={previewUrl}
                         currentPath={currentPath}
                         onReturn={() => navigate(PathUtil.buildFileUrl(PathUtil.parentPath(currentPath)))}
+                        onRoot={onRoot}
                         onDownload={onDownload}
                         onNewWindow={onNewWindow}
                     />
@@ -335,11 +341,11 @@ const File: React.FC<FileProps> = ({ fileData }) => {
     return (
         <MainLayout>
             {/* 文件信息头部 */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                     {getFileIcon(fileInfo, previewableFileType)}
                     <div>
-                        <h1 className="text-2xl font-semibold">{fileInfo?.name}</h1>
+                        <h1 className="max-w-[75vw] truncate text-xl font-semibold sm:text-2xl" title={fileInfo?.name}>{fileInfo?.name}</h1>
                         <div className="flex items-center space-x-2 mt-1">
                             <Badge variant="secondary">{getFileTypeLabel(fileInfo, previewableFileType)}</Badge>
                             {fileInfo?.size && (

@@ -21,6 +21,7 @@ import ViewerToolbar from './ViewerToolbar'
 export interface ImageViewerToolbarProps {
     // 继承ViewerToolbar的通用功能
     onReturn?: () => void
+    onRoot?: () => void
     onNewWindow?: () => void
     onDownload?: () => void
     onFullscreen?: () => void
@@ -56,6 +57,7 @@ const ImageViewerToolbar: React.FC<ImageViewerToolbarProps> = (props) => {
     return (
         <ViewerToolbar
             onReturn={props.onReturn}
+            onRoot={props.onRoot}
             onNewWindow={props.onNewWindow}
             onDownload={props.onDownload}
             onFullscreen={props.onFullscreen}
@@ -290,4 +292,4 @@ const ImageViewerToolbar: React.FC<ImageViewerToolbarProps> = (props) => {
     )
 }
 
-export default ImageViewerToolbar 
+export default ImageViewerToolbar

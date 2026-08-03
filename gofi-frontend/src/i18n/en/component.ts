@@ -26,6 +26,7 @@ export default {
     'component.viewer.image-load-error': 'Failed to load image',
     'component.viewer.toolbar.back': 'Go back',
     'component.viewer.toolbar.return': 'Return',
+    'component.viewer.toolbar.root': 'Back to root',
     'component.viewer.toolbar.previous': 'Previous',
     'component.viewer.toolbar.next': 'Next',
     'component.viewer.toolbar.zoom-out': 'Zoom out',

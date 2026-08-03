@@ -9,6 +9,7 @@ interface IProps {
     // 工具栏简化属性
     currentPath?: string
     onReturn?: () => void
+    onRoot?: () => void
     onNewWindow?: () => void
     onDownload?: () => void
     onBackToOriginal?: () => void
@@ -19,11 +20,12 @@ const AudioViewer: React.FC<IProps> = (props) => {
     const { t } = useTranslation()
     
     return (
-        <div className="w-full max-h-[600px] flex flex-col relative">
+        <div className="relative flex h-[calc(100dvh-12rem)] min-h-[360px] w-full flex-col">
             {/* 工具栏组件 */}
             <ViewerToolbar
                 currentPath={props.currentPath}
                 onReturn={props.onReturn}
+                onRoot={props.onRoot}
                 onNewWindow={props.onNewWindow}
                 onDownload={props.onDownload}
             />

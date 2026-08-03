@@ -4,6 +4,7 @@ import LogoLoading from '../LogoLoading'
 import PathUtil from '@/utils/path.util'
 import Toast from '@/utils/toast.util'
 import { useTranslation } from 'react-i18next'
+import { Button } from '@/components/ui/button'
 
 /**
  * 图片查看器组件的属性接口
@@ -19,6 +20,7 @@ interface IProps {
     breadcrumbs?: { name: string; path: string }[]
     onNavigateBreadcrumb?: (path: string) => void
     onReturn?: () => void
+    onRoot?: () => void
     onNewWindow?: () => void
     onDownload?: () => void
     onBackToOriginal?: () => void
@@ -38,6 +40,7 @@ const ImageViewer: React.FC<IProps> = ({
     breadcrumbs,
     onNavigateBreadcrumb,
     onReturn,
+    onRoot,
     onNewWindow,
     onDownload,
     onBackToOriginal,
@@ -59,6 +62,7 @@ const ImageViewer: React.FC<IProps> = ({
     const [position, setPosition] = useState({ x: 0, y: 0 })
     // 图片加载状态
     const [isLoading, setIsLoading] = useState(true)
+    const [loadError, setLoadError] = useState(false)
     // 全屏状态
     const [isFullscreen, setIsFullscreen] = useState(false)
 
@@ -68,8 +72,7 @@ const ImageViewer: React.FC<IProps> = ({
     const containerRef = useRef<HTMLDivElement>(null)
     // 图片容器的引用，用于计算可用空间
     const imageContainerRef = useRef<HTMLDivElement>(null)
-    // 适应屏幕的定时器引用，用于防抖
-    const fitToScreenTimeoutRef = useRef<number | null>(null)
+    const fitToScreenFrameRef = useRef<number | null>(null)
 
     // 性能优化：使用 ref 存储拖拽状态，避免重复渲染
     const dragStateRef = useRef({
@@ -91,6 +94,7 @@ const ImageViewer: React.FC<IProps> = ({
         setPosition({ x: 0, y: 0 })
         // 开始加载新图片
         setIsLoading(true)
+        setLoadError(false)
     }, [])
 
     // 当图片URL改变时，重置所有变换
@@ -229,16 +233,14 @@ const ImageViewer: React.FC<IProps> = ({
     const fitToScreen = useCallback(() => {
         if (!imageRef.current || !imageContainerRef.current) return
 
-        // 清除之前的定时器，防止重复执行
-        if (fitToScreenTimeoutRef.current) {
-            clearTimeout(fitToScreenTimeoutRef.current)
+        if (fitToScreenFrameRef.current) {
+            cancelAnimationFrame(fitToScreenFrameRef.current)
         }
 
         // 只重置图片位置
         setPosition({ x: 0, y: 0 })
 
-        // 延迟执行，确保DOM更新完成
-        fitToScreenTimeoutRef.current = window.setTimeout(() => {
+        fitToScreenFrameRef.current = requestAnimationFrame(() => {
             if (!imageRef.current || !imageContainerRef.current) return
 
             // 获取图片的原始尺寸
@@ -264,7 +266,7 @@ const ImageViewer: React.FC<IProps> = ({
 
             setFitScale(fit)
             setScale(1) // 适应窗口时，scale=1
-        }, 100)
+        })
     }, [])
 
     /**
@@ -281,47 +283,25 @@ const ImageViewer: React.FC<IProps> = ({
         setScale(1)
     }, [rotation])
 
-    // 监听图片加载完成事件
+    // 仅在容器尺寸真正变化时重新适应，避免全局 resize 造成无关计算。
     useEffect(() => {
-        if (url) {
-            const image = new Image()
-            image.src = url
-
-            const handleLoad = () => {
-                setIsLoading(false)
-                // 图片加载完成后，自动适应屏幕
-                fitToScreen()
-            }
-
-            image.addEventListener('load', handleLoad)
-
-            // 如果图片已经加载完成，立即调用
-            if (image.complete && image.naturalWidth > 0) {
-                handleLoad()
-            }
-
-            return () => image.removeEventListener('load', handleLoad)
-        }
-    }, [url, fitToScreen])
-
-    // 监听窗口大小改变，重新适应视口
-    useEffect(() => {
-        const handleResize = () => {
+        const container = imageContainerRef.current
+        if (!container) return
+        const observer = new ResizeObserver(() => {
             if (imageRef.current && imageRef.current.complete) {
                 fitToScreen()
             }
-        }
-
-        window.addEventListener('resize', handleResize)
-        return () => window.removeEventListener('resize', handleResize)
+        })
+        observer.observe(container)
+        return () => observer.disconnect()
     }, [fitToScreen])
 
     // 清理定时器和动画帧，防止内存泄漏
     useEffect(() => {
         const dragState = dragStateRef.current
         return () => {
-            if (fitToScreenTimeoutRef.current) {
-                clearTimeout(fitToScreenTimeoutRef.current)
+            if (fitToScreenFrameRef.current) {
+                cancelAnimationFrame(fitToScreenFrameRef.current)
             }
             if (dragState.animationFrameId) {
                 cancelAnimationFrame(dragState.animationFrameId)
@@ -379,16 +359,27 @@ const ImageViewer: React.FC<IProps> = ({
     const canGoPrev = canNavigate && currentIndex > 0
     const canGoNext = canNavigate && currentIndex < imageList.length - 1
 
+    // 只预取相邻图片，改善翻页速度，同时避免一次性拉取整个目录。
+    useEffect(() => {
+        const adjacent = [imageList[currentIndex - 1], imageList[currentIndex + 1]].filter(Boolean)
+        adjacent.forEach((source) => {
+            const image = new Image()
+            image.decoding = 'async'
+            image.src = source
+        })
+    }, [currentIndex, imageList])
+
     useEffect(() => {
         fitToScreen()
     }, [rotation, fitToScreen])
 
     return (
-        <div ref={containerRef} className="w-full max-h-[600px] flex flex-col relative rounded-lg overflow-hidden">
+        <div ref={containerRef} className="relative flex h-[calc(100dvh-12rem)] min-h-[360px] w-full flex-col overflow-hidden rounded-lg bg-muted/20">
             {/* 图片工具栏组件 */}
             <ImageViewerToolbar
                 // 通用功能
                 onReturn={onReturn}
+                onRoot={onRoot}
                 onNewWindow={onNewWindow}
                 onDownload={onDownload}
                 onFullscreen={handleFullscreen}
@@ -444,17 +435,37 @@ const ImageViewer: React.FC<IProps> = ({
                         </div>
                     </div>
                 )}
+                {loadError && (
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background p-6 text-center">
+                        <p className="font-medium text-destructive">{t('component.viewer.image-load-error')}</p>
+                        <Button variant="outline" size="sm" onClick={() => {
+                            setLoadError(false)
+                            setIsLoading(true)
+                            if (imageRef.current) imageRef.current.src = url || ''
+                        }}>
+                            {t('common.retry')}
+                        </Button>
+                    </div>
+                )}
                 {/* 图片元素 */}
                 <img
                     ref={imageRef}
                     src={url}
-                    alt="Image Preview"
+                    alt={url ? PathUtil.getFileNameFromUrl(url) : t('common.file-type.image')}
                     style={{ ...imageStyle, opacity: isLoading ? 0 : 1 }}
                     onMouseDown={handleMouseDown}
                     className=""
                     draggable="false" // 禁用默认拖拽行为
-                    onLoad={() => setIsLoading(false)}
-                    onError={() => setIsLoading(false)}
+                    decoding="async"
+                    onLoad={() => {
+                        setLoadError(false)
+                        setIsLoading(false)
+                        fitToScreen()
+                    }}
+                    onError={() => {
+                        setIsLoading(false)
+                        setLoadError(true)
+                    }}
                 />
             </div>
         </div>

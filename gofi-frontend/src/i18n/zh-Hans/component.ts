@@ -39,6 +39,7 @@ export default {
     // 查看器工具栏
     'component.viewer.toolbar.back': '返回上一页',
     'component.viewer.toolbar.return': '返回',
+    'component.viewer.toolbar.root': '返回根目录',
     'component.viewer.toolbar.previous': '上一张',
     'component.viewer.toolbar.next': '下一张',
     'component.viewer.toolbar.zoom-out': '缩小',

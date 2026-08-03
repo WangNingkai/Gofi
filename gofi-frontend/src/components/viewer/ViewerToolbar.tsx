@@ -3,6 +3,7 @@ import {
     ExternalLink,
     Download,
     Fullscreen,
+    Home,
 } from 'lucide-react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,6 +23,7 @@ import PathUtil from '@/utils/path.util'
 export interface ViewerToolbarProps {
     // 通用功能
     onReturn?: () => void
+    onRoot?: () => void
     onNewWindow?: () => void
     onDownload?: () => void
     onFullscreen?: () => void
@@ -39,6 +41,7 @@ export interface ViewerToolbarProps {
 
 const ViewerToolbar: React.FC<ViewerToolbarProps> = ({
     onReturn,
+    onRoot,
     onNewWindow,
     onDownload,
     onFullscreen,
@@ -85,7 +88,7 @@ const ViewerToolbar: React.FC<ViewerToolbarProps> = ({
     const displayBreadcrumbs = generateBreadcrumbs().map((b, i) => i === 0 ? { ...b, name: '/' } : b);
     
     return (
-        <div className={`flex items-center justify-between bg-background/95 backdrop-blur-sm border-b border-border p-2 ${className}`}>
+        <div className={`flex flex-wrap items-center justify-between gap-2 border-b border-border bg-background/95 p-2 backdrop-blur-sm ${className}`}>
             {/* 左侧：返回、面包屑 */}
             <div className="flex items-center space-x-2 min-w-0">
                 {/* 返回按钮 - 始终显示 */}
@@ -107,9 +110,28 @@ const ViewerToolbar: React.FC<ViewerToolbarProps> = ({
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={onRoot}
+                                className="h-8 w-8 flex-shrink-0 p-0"
+                                disabled={!onRoot}
+                                aria-label={t('component.viewer.toolbar.root')}
+                            >
+                                <Home className="h-4 w-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>{t('component.viewer.toolbar.root')}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
                 
                 {/* 面包屑 - 使用shadcn组件 */}
-                <div className="bg-muted/50 rounded-md px-2 py-1 border border-border/50">
+                <div className="hidden min-w-0 rounded-md border border-border/50 bg-muted/50 px-2 py-1 sm:block">
                     <Breadcrumb>
                         <BreadcrumbList>
                             {displayBreadcrumbs && displayBreadcrumbs.length > 0 ? (
@@ -182,17 +204,17 @@ const ViewerToolbar: React.FC<ViewerToolbarProps> = ({
                 </div>
 
                 {/* 特定Viewer的功能按钮, 移到面包屑后面 */}
-                {children}
+                <div className="flex max-w-[55vw] items-center overflow-x-auto">{children}</div>
             </div>
 
             {/* 右侧：通用功能按钮 */}
-            <div className="flex items-center space-x-2">
+            <div className="ml-auto flex items-center gap-1">
                 {/* 新窗口打开 */}
                 {onNewWindow && (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="sm" onClick={onNewWindow} className="h-8 w-8 p-0">
+                        <Button variant="ghost" size="sm" onClick={onNewWindow} className="h-8 w-8 p-0" aria-label={t('common.open-in-new-tab')}>
                           <ExternalLink className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
@@ -207,7 +229,7 @@ const ViewerToolbar: React.FC<ViewerToolbarProps> = ({
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="sm" onClick={onDownload} className="h-8 w-8 p-0">
+                        <Button variant="ghost" size="sm" onClick={onDownload} className="h-8 w-8 p-0" aria-label={t('common.download')}>
                           <Download className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
@@ -222,7 +244,7 @@ const ViewerToolbar: React.FC<ViewerToolbarProps> = ({
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="ghost" size="sm" onClick={onFullscreen} className="h-8 w-8 p-0">
+                                <Button variant="ghost" size="sm" onClick={onFullscreen} className="h-8 w-8 p-0" aria-label={isFullscreen ? t('component.viewer.toolbar.exit-fullscreen') : t('component.viewer.toolbar.fullscreen')}>
                                     <Fullscreen className="h-4 w-4" />
                                 </Button>
                             </TooltipTrigger>
