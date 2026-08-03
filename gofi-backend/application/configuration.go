@@ -119,30 +119,33 @@ func (service *ConfigurationService) Setup(input SetupInput) (*AdminConfiguratio
 	return service.adminDTO(configuration), nil
 }
 
-func (service *ConfigurationService) UpdateStorage(path string) (*AdminConfiguration, error) {
+func (service *ConfigurationService) UpdateStorage(path string) (*AdminConfiguration, bool, error) {
 	if env.IsPreview() {
-		return nil, ErrPreviewReadOnly
+		return nil, false, ErrPreviewReadOnly
 	}
 	configuration, err := service.configurations.Get()
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if !configuration.Initialized {
-		return nil, ErrNotInitialized
+		return nil, false, ErrNotInitialized
 	}
 
 	storagePath, customPath, err := normalizeStoragePath(path)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if err := ensureWritableDirectory(storagePath); err != nil {
-		return nil, fmt.Errorf("%w: storage directory is not writable", ErrInvalidInput)
+		return nil, false, fmt.Errorf("%w: storage directory is not writable", ErrInvalidInput)
+	}
+	if configuration.CustomStoragePath == customPath {
+		return service.adminDTO(configuration), false, nil
 	}
 	configuration.CustomStoragePath = customPath
 	if err := service.configurations.Update(configuration); err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return service.adminDTO(configuration), nil
+	return service.adminDTO(configuration), true, nil
 }
 
 func (service *ConfigurationService) StorageRoot() (string, error) {

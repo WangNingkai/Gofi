@@ -58,19 +58,29 @@ func createGuestPermissions() []Permission {
 }
 
 func SyncGuestPermissions() error {
-	count, err := engine.Where("role_type = ?", RoleTypeGuest).Count(new(Permission))
+	existing := make([]Permission, 0)
+	err := engine.Where("role_type = ?", RoleTypeGuest).Find(&existing)
 	if err != nil {
 		return err
 	}
-
-	if count != 0 {
-		return nil
+	known := make(map[Name]bool, len(existing))
+	for _, permission := range existing {
+		known[permission.Name] = true
 	}
 
+	session := engine.NewSession()
+	defer session.Close()
+	if err := session.Begin(); err != nil {
+		return err
+	}
 	for _, permission := range createGuestPermissions() {
-		if _, err := engine.InsertOne(&permission); err != nil {
+		if known[permission.Name] {
+			continue
+		}
+		if _, err := session.InsertOne(&permission); err != nil {
+			_ = session.Rollback()
 			return err
 		}
 	}
-	return nil
+	return session.Commit()
 }

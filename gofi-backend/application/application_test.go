@@ -68,6 +68,30 @@ func TestLegacyMD5IsUpgradedAfterLogin(t *testing.T) {
 	require.NotEqual(t, legacy.Password, upgraded.Password)
 }
 
+func TestUpdateStorageReportsOnlyRealChanges(t *testing.T) {
+	require.NoError(t, db.Open(filepath.Join(t.TempDir(), "configuration.db"), false))
+	t.Cleanup(func() { require.NoError(t, db.Close()) })
+
+	core := application.New(db.Engine(), env.GetConfiguration())
+	initialStorage := t.TempDir()
+	_, err := core.Configuration.Setup(application.SetupInput{
+		CustomStoragePath: initialStorage,
+		AdminUsername:     "owner",
+		AdminPassword:     "local-test-password",
+	})
+	require.NoError(t, err)
+
+	_, changed, err := core.Configuration.UpdateStorage(initialStorage)
+	require.NoError(t, err)
+	require.False(t, changed)
+
+	replacement := t.TempDir()
+	configuration, changed, err := core.Configuration.UpdateStorage(replacement)
+	require.NoError(t, err)
+	require.True(t, changed)
+	require.Equal(t, replacement, configuration.CustomStoragePath)
+}
+
 func TestFileManagementAndResumableUpload(t *testing.T) {
 	require.NoError(t, db.Open(filepath.Join(t.TempDir(), "files.db"), false))
 	t.Cleanup(func() { require.NoError(t, db.Close()) })

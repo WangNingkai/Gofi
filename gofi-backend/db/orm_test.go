@@ -85,3 +85,32 @@ func TestOpenConfiguresSQLiteForConcurrentReads(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "5000", busyTimeout[0]["timeout"])
 }
+
+func TestSyncGuestPermissionsAddsMissingRowsWithoutResettingExistingValues(t *testing.T) {
+	require.NoError(t, Open(filepath.Join(t.TempDir(), "permissions.db"), false))
+	t.Cleanup(func() { require.NoError(t, Close()) })
+
+	_, err := Engine().Where("role_type = ? AND name = ?", RoleTypeGuest, FileUpload).
+		Cols("enable").Update(&Permission{Enable: true})
+	require.NoError(t, err)
+	_, err = Engine().Where("role_type = ? AND name = ?", RoleTypeGuest, FilePreview).Delete(new(Permission))
+	require.NoError(t, err)
+
+	require.NoError(t, SyncGuestPermissions())
+
+	permissions := make([]Permission, 0)
+	require.NoError(t, Engine().Where("role_type = ?", RoleTypeGuest).Find(&permissions))
+	require.Len(t, permissions, len(createGuestPermissions()))
+
+	upload := new(Permission)
+	found, err := Engine().Where("role_type = ? AND name = ?", RoleTypeGuest, FileUpload).Get(upload)
+	require.NoError(t, err)
+	require.True(t, found)
+	require.True(t, upload.Enable, "同步不应覆盖用户已有的权限开关")
+
+	preview := new(Permission)
+	found, err = Engine().Where("role_type = ? AND name = ?", RoleTypeGuest, FilePreview).Get(preview)
+	require.NoError(t, err)
+	require.True(t, found)
+	require.False(t, preview.Enable)
+}

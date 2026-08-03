@@ -52,12 +52,14 @@ func (handler *Handler) UpdateConfiguration(ctx *gin.Context) {
 		Failure(ctx, http.StatusBadRequest, StatusInvalidRequest, i18n.T(ctx, "error.invalid_request"))
 		return
 	}
-	configuration, err := handler.Application.Configuration.UpdateStorage(input.CustomStoragePath)
+	configuration, changed, err := handler.Application.Configuration.UpdateStorage(input.CustomStoragePath)
 	if err != nil {
 		WriteApplicationError(ctx, err)
 		return
 	}
-	handler.rebuildIndexInBackground("storage_update")
+	if changed {
+		handler.rebuildIndexInBackground("storage_update")
+	}
 	Success(ctx, configuration)
 }
 
