@@ -21,6 +21,7 @@ export default {
     'common.close': 'Close',
     'common.retry': 'Retry',
     'common.back': 'Back',
+    'common.trace-id': 'Trace ID',
 
     // File types
     'common.file-type.all': 'All Types',

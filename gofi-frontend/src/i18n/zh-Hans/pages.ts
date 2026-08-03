@@ -54,6 +54,7 @@ export default {
     'pages.file-list.destination-placeholder': '输入目标目录路径',
     'pages.shared.title': 'Gofi 分享',
     'pages.shared.description': '此内容由受限、可撤销的分享链接提供',
+    'pages.shared.read-only': '只读分享',
     'pages.file-list.batch-delete': '删除选中的 {{count}} 项',
     'pages.file-list.batch-delete-description': '每一项会独立执行；失败项将保留并显示汇总结果。',
     'pages.file-list.batch-partial': '{{count}} 项操作失败，其余项目已完成',

@@ -9,6 +9,9 @@ import LogoLoading from '../../components/LogoLoading'
 import QueryKey from '../../constants/swr'
 import PathUtil from '../../utils/path.util'
 import { useTranslation } from 'react-i18next'
+import { ApiError } from '@/shared/api/client'
+import { Button } from '@/components/ui/button'
+import Toast from '@/utils/toast.util'
 
 const FileRouter: React.FC = () => {
     const location = useLocation()
@@ -22,7 +25,7 @@ const FileRouter: React.FC = () => {
     const filePath = getFilePath()
 
     // 统一的文件/目录信息请求 - 只请求一次
-    const { data: fileResponse, error, isLoading } = useSWR(
+    const { data: fileResponse, error, isLoading, mutate } = useSWR(
         filePath ? [QueryKey.FILE_DETAIL, filePath] : null,
         ([, path]) => fetchFile(path)
     )
@@ -43,17 +46,25 @@ const FileRouter: React.FC = () => {
 
     // 错误处理
     if (error) {
+        const traceId = error instanceof ApiError ? error.traceId : undefined
         return (
             <div className="flex flex-col items-center justify-center py-16">
-                <div className="text-center">
+                <div className="max-w-lg rounded-xl border bg-card p-6 text-center shadow-sm">
                     <h2 className="text-xl font-semibold mb-2">{t('pages.file-list.load-failed.title')}</h2>
                     <p className="text-muted-foreground mb-4">{error.message}</p>
-                    <button
-                        onClick={() => window.location.reload()}
-                        className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-                    >
-                        {t('common.retry')}
-                    </button>
+                    {traceId && (
+                        <button
+                            type="button"
+                            className="mb-4 rounded bg-muted px-2 py-1 font-mono text-xs text-muted-foreground hover:text-foreground"
+                            onClick={() => void navigator.clipboard.writeText(traceId).then(() => Toast.s(t('toast.trace-id-copied')))}
+                        >
+                            {t('common.trace-id')}: {traceId}
+                        </button>
+                    )}
+                    <div className="flex justify-center gap-2">
+                        <Button variant="outline" onClick={() => window.location.assign('/file/')}>{t('component.viewer.toolbar.root')}</Button>
+                        <Button onClick={() => void mutate()}>{t('common.retry')}</Button>
+                    </div>
                 </div>
             </div>
         )

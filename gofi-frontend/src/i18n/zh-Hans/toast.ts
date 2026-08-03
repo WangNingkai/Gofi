@@ -1,4 +1,5 @@
 export default {
+    'toast.trace-id-copied': '追踪编号已复制',
     'toast.password-change-success': '密码修改成功',
     'toast.storage-change-success': '文件仓库修改成功',
     'toast.login-success': '登录成功',

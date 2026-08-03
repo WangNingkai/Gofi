@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react'
-import { Download, File, Folder, ShieldCheck } from 'lucide-react'
+import React, { useEffect, useRef, useState } from 'react'
+import { ArrowLeft, Download, File, Folder, Home, Loader2, RefreshCw, ShieldCheck } from 'lucide-react'
 import { useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import type { DirectoryData, FileInfo, FileResponse } from '@/features/files/types'
 import { fetchSharedFile, sharedDownloadUrl } from '@/features/shares/api'
 import { Button } from '@/components/ui/button'
+import logo from '@/assets/logo.svg'
+import { FormatUtil } from '@/utils/format.util'
 
 export default function Shared() {
     const { t } = useTranslation()
@@ -12,13 +14,29 @@ export default function Shared() {
     const [path, setPath] = useState('/')
     const [response, setResponse] = useState<FileResponse>()
     const [error, setError] = useState('')
+    const [loading, setLoading] = useState(true)
+    const [retryKey, setRetryKey] = useState(0)
+    const requestVersion = useRef(0)
 
     useEffect(() => {
+        const version = ++requestVersion.current
         setError('')
-        void fetchSharedFile(token, path).then(setResponse).catch((reason) => {
-            setError(reason instanceof Error ? reason.message : String(reason))
-        })
-    }, [token, path])
+        setLoading(true)
+        void fetchSharedFile(token, path)
+            .then((value) => {
+                if (version === requestVersion.current) setResponse(value)
+            })
+            .catch((reason) => {
+                if (version === requestVersion.current) {
+                    setError(reason instanceof Error ? reason.message : String(reason))
+                }
+            })
+            .finally(() => {
+                if (version === requestVersion.current) setLoading(false)
+            })
+    }, [token, path, retryKey])
+
+    const parentPath = path === '/' ? '/' : path.slice(0, path.lastIndexOf('/')) || '/'
 
     const open = (file: FileInfo) => {
         const childPath = `${path === '/' ? '' : path}/${file.name}`
@@ -30,22 +48,47 @@ export default function Shared() {
     }
 
     return (
-        <main className="mx-auto max-w-4xl px-4 py-10">
-            <header className="mb-8 flex items-center gap-3 border-b pb-5">
-                <ShieldCheck className="h-7 w-7 text-primary" />
-                <div>
-                    <h1 className="text-xl font-semibold">{t('pages.shared.title')}</h1>
-                    <p className="text-sm text-muted-foreground">{t('pages.shared.description')}</p>
+        <main className="min-h-screen bg-muted/20 px-4 py-8 sm:py-12">
+            <div className="mx-auto max-w-4xl overflow-hidden rounded-2xl border bg-card shadow-sm">
+                <header className="flex flex-wrap items-center justify-between gap-4 border-b p-5 sm:p-6">
+                    <div className="flex items-center gap-3">
+                        <img src={logo} alt="Gofi" className="h-9 w-auto" />
+                        <div>
+                            <h1 className="flex items-center gap-2 text-xl font-semibold">
+                                {t('pages.shared.title')}<ShieldCheck className="h-4 w-4 text-primary" />
+                            </h1>
+                            <p className="text-sm text-muted-foreground">{t('pages.shared.description')}</p>
+                        </div>
+                    </div>
+                    <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">{t('pages.shared.read-only')}</span>
+                </header>
+                <div className="flex items-center gap-2 border-b bg-muted/20 px-4 py-3">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setPath('/')} disabled={path === '/'} aria-label={t('component.viewer.toolbar.root')}>
+                        <Home className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setPath(parentPath)} disabled={path === '/'} aria-label={t('common.back')}>
+                        <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground" title={path}>{path}</span>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setRetryKey((value) => value + 1)} disabled={loading} aria-label={t('common.action.refresh')}>
+                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                    </Button>
                 </div>
-            </header>
-            {error && <p className="rounded border border-destructive p-4 text-destructive">{error}</p>}
-            {response?.type === 'file' && (() => {
+                <section className="min-h-64 p-4 sm:p-6">
+            {loading && !response && <div className="flex min-h-52 items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>}
+            {error && (
+                <div className="flex min-h-52 flex-col items-center justify-center gap-3 text-center">
+                    <p className="text-destructive">{error}</p>
+                    <Button variant="outline" onClick={() => setRetryKey((value) => value + 1)}>{t('common.retry')}</Button>
+                </div>
+            )}
+            {!error && response?.type === 'file' && (() => {
                 const file = response.data as { file: FileInfo }
                 return (
-                    <div className="flex items-center justify-between border-b py-4">
+                    <div className="flex items-center justify-between rounded-xl border p-4">
                         <div className="flex min-w-0 items-center gap-3">
                             <File className="h-5 w-5" />
-                            <span className="truncate">{file.file.name}</span>
+                            <div className="min-w-0"><p className="truncate font-medium">{file.file.name}</p><p className="text-xs text-muted-foreground">{FormatUtil.formatBytes(file.file.size)}</p></div>
                         </div>
                         <Button asChild>
                             <a href={sharedDownloadUrl(token)}><Download className="mr-2 h-4 w-4" />{t('tooltip.download')}</a>
@@ -53,9 +96,11 @@ export default function Shared() {
                     </div>
                 )
             })()}
-            {response?.type === 'directory' &&
-                <div className="divide-y border-y">
-                    {(response.data as DirectoryData).files.map((file) =>
+            {!error && response?.type === 'directory' && (() => {
+                const files = (response.data as DirectoryData).files
+                if (files.length === 0) return <div className="flex min-h-52 flex-col items-center justify-center gap-2 text-muted-foreground"><Folder className="h-10 w-10" /><p>{t('pages.file-list.empty-folder.title')}</p></div>
+                return <div className={`divide-y rounded-xl border transition-opacity ${loading ? 'pointer-events-none opacity-60' : ''}`}>
+                    {files.map((file) =>
                         <button
                             key={file.path}
                             type="button"
@@ -63,10 +108,14 @@ export default function Shared() {
                             className="flex w-full items-center gap-3 px-2 py-3 text-left hover:bg-muted"
                         >
                             {file.isDirectory ? <Folder className="h-5 w-5" /> : <File className="h-5 w-5" />}
-                            <span className="truncate">{file.name}</span>
+                            <span className="min-w-0 flex-1 truncate font-medium">{file.name}</span>
+                            {!file.isDirectory && <span className="text-xs text-muted-foreground">{FormatUtil.formatBytes(file.size)}</span>}
                         </button>
                     )}
-                </div>}
+                </div>
+            })()}
+                </section>
+            </div>
         </main>
     )
 }

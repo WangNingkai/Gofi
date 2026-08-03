@@ -53,6 +53,7 @@ export default {
     'pages.file-list.destination-placeholder': 'Enter the destination directory path',
     'pages.shared.title': 'Gofi Share',
     'pages.shared.description': 'This content is provided through a restricted, revocable share link',
+    'pages.shared.read-only': 'Read-only share',
     'pages.file-list.batch-delete': 'Delete {{count}} selected items',
     'pages.file-list.batch-delete-description': 'Each item is processed independently. Failed items remain and are summarized.',
     'pages.file-list.batch-partial': '{{count}} operations failed; the remaining items completed',

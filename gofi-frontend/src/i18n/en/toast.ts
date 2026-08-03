@@ -1,4 +1,5 @@
 export default {
+    'toast.trace-id-copied': 'Trace ID copied',
     'toast.password-change-success': 'Password update succeeded',
     'toast.storage-change-success': 'Storage path update succeeded',
     'toast.login-success': 'Login success',

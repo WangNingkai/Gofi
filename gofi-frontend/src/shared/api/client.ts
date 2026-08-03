@@ -11,6 +11,7 @@ export class ApiError extends Error {
         message: string,
         public readonly status: number,
         public readonly code: number,
+        public readonly traceId?: string,
         public readonly cause?: unknown,
     ) {
         super(message)
@@ -44,6 +45,7 @@ transport.interceptors.response.use(
                 payload?.message || 'Request failed',
                 response.status,
                 payload?.code ?? -1,
+                payload?.traceId,
             )
         }
         return payload.data as never
@@ -55,7 +57,8 @@ transport.interceptors.response.use(
         const status = error.response?.status ?? 0
         const code = error.response?.data?.code ?? -1
         const message = error.response?.data?.message || error.message || 'Network request failed'
-        return Promise.reject(new ApiError(message, status, code, error))
+        const traceId = error.response?.data?.traceId
+        return Promise.reject(new ApiError(message, status, code, traceId, error))
     },
 )
 

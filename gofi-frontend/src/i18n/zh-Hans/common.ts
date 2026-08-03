@@ -21,6 +21,7 @@ export default {
     'common.close': '关闭',
     'common.retry': '重试',
     'common.back': '返回',
+    'common.trace-id': '追踪编号',
 
     // 文件类型
     'common.file-type.all': '全部类型',
