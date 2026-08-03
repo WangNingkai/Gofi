@@ -21,7 +21,7 @@ OUTPUT_NAME := gofi-$(TARGET_OS)-$(TARGET_ARCH)-$(MODE)
 	dev dev-frontend dev-backend \
 	test test-frontend test-backend \
 	check check-frontend check-backend fmt-check \
-	build build-frontend stage-frontend build-backend \
+	build package build-frontend stage-frontend build-backend \
 	smoke \
 	build-linux-amd64 build-linux-arm64 cross-build checksums \
 	clean clean-frontend clean-backend-dist clean-output printinfo
@@ -34,6 +34,7 @@ help:
 		'  make test          运行前后端测试' \
 		'  make check         运行格式、静态检查、测试和前端构建' \
 		'  make build         构建当前平台的生产二进制' \
+		'  make package       构建可直接部署的压缩包和校验文件' \
 		'  make smoke         验证已构建的生产二进制' \
 		'  make cross-build   构建 Linux amd64/arm64 发布产物' \
 		'  make clean         清理所有生成物'
@@ -83,6 +84,9 @@ fmt-check:
 	fi
 
 build: clean-output build-frontend stage-frontend build-backend checksums
+
+package: build
+	sh scripts/package.sh "$(OUTPUT_DIR)/$(OUTPUT_NAME)" "$(VERSION)" "$(TARGET_OS)" "$(TARGET_ARCH)" "$(OUTPUT_DIR)"
 
 build-frontend:
 	$(PNPM) --dir $(FRONTEND_DIR) build

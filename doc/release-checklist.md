@@ -1,30 +1,32 @@
 # 发布检查清单
 
-## 代码与数据
+本清单只适用于正式版本。单独创建或推送 Git tag 不构成发布，也不会启动正式发布流水线。
 
-- [ ] 工作区没有未说明的改动或生成物。
-- [ ] 数据库旧版本升级测试通过。
-- [ ] bcrypt 迁移、JWT 密钥持久化和会话撤销测试通过。
+## 发布前
+
+- [ ] 目标提交的 `CI and test packages` workflow 已通过。
+- [ ] linux/amd64 与 linux/arm64 测试部署包可以从该次 Actions 运行下载。
+- [ ] 至少一个测试部署包已经在干净目录完成启动和核心功能验收。
+- [ ] 数据库旧版本升级、bcrypt 迁移、JWT 密钥持久化和会话撤销测试通过。
 - [ ] 路径、权限、上传和索引边界测试通过。
-
-## 构建
-
-- [ ] `make check` 通过。
-- [ ] `make build` 和 `make smoke` 通过。
-- [ ] 同一提交重复构建的产物差异已有解释。
-- [ ] linux/amd64 和 linux/arm64 二进制及 SHA-256 已生成。
-- [ ] Docker amd64/arm64 构建和健康检查通过。
-
-## 文档与发布
-
-- [ ] README、快速开始、配置、FAQ 和升级文档与实际行为一致。
+- [ ] README、配置、FAQ、升级与回滚文档和实际行为一致。
 - [ ] 发布说明列出数据迁移、已知限制和回滚方式。
-- [ ] Tag 指向通过验收的提交。
-- [ ] CI 与发布工作流在 GitHub Runner 上通过。
-- [ ] 没有提交本地维护记录、密钥、数据库、日志或构建缓存。
+- [ ] Docker Hub 的 `DOCKER_USERNAME`、`DOCKER_ACCESS_TOKEN` secrets 可用。
 
-只有全部必需项通过后才能推送 Tag 或发布镜像。
+## 创建正式发布
 
-## 当前阻塞
+- [ ] 在 GitHub Releases 页面创建 Release，而不是只推送 tag。
+- [ ] Release tag 使用 `vX.Y.Z` 或 `vX.Y.Z-suffix` 格式，并指向已验收提交。
+- [ ] 预发布版本已勾选 Pre-release；只有稳定 Release 可以更新 Docker `latest`。
+- [ ] 发布 Release，触发 `Publish GitHub Release` workflow。
 
-发布流水线已取消 Buildx 与 QEMU，改为在 `ubuntu-24.04` 和 `ubuntu-24.04-arm` 上分别执行普通构建，再合并 Docker manifest。按维护者要求当前不推送远端；linux/arm64 和多架构 Docker 两项必须由首次 GitHub Runner 运行通过，才能勾选并解除 M4 阻塞。
+## 发布后
+
+- [ ] Release workflow 的完整检查通过。
+- [ ] Release 附件包含 linux/amd64、linux/arm64 的 `tar.gz` 和外部 SHA-256 文件。
+- [ ] 下载并验证附件中的 `SHA256SUMS`、`INSTALL.txt` 与 `gofi` 可执行文件。
+- [ ] 版本对应的双架构 Docker manifest 可拉取并通过健康检查。
+- [ ] 稳定版的 `latest` 已更新；预发布没有覆盖 `latest`。
+- [ ] GitHub Release 页面、附件和容器镜像版本保持一致。
+
+任何正式 job 失败都表示该 Release 未通过交付验收，应修复后重新发布或撤销该 Release，不能用已有 tag 冒充成功发布。

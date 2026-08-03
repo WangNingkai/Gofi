@@ -1,21 +1,38 @@
-name: Release
+name: Publish GitHub Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  release:
+    types: [published]
+
+concurrency:
+  group: release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
   verify:
-    name: 发布前检查
+    name: 验证已发布 Release
     runs-on: ubuntu-24.04
 
     steps:
-      - name: 检出代码
+      - name: 检出 Release 对应标签
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - name: 校验 Release 标签
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z._-]+)?$ ]]; then
+            echo "Release 标签必须使用 vX.Y.Z 或 vX.Y.Z-suffix 格式：$RELEASE_TAG" >&2
+            exit 1
+          fi
+          test "$GITHUB_REF" = "refs/tags/$RELEASE_TAG"
 
       - name: 安装 Go
         uses: actions/setup-go@v5
@@ -38,11 +55,11 @@ jobs:
       - name: 安装依赖
         run: make install
 
-      - name: 运行完整检查
+      - name: 运行发布前完整检查
         run: make check
 
-  binaries:
-    name: 发布二进制 ${{ matrix.arch }}
+  release-packages:
+    name: 正式部署包 linux/${{ matrix.arch }}
     needs: verify
     strategy:
       fail-fast: false
@@ -55,9 +72,10 @@ jobs:
     runs-on: ${{ matrix.runner }}
 
     steps:
-      - name: 检出代码
+      - name: 检出 Release 对应标签
         uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.release.tag_name }}
           fetch-depth: 0
 
       - name: 安装 Go
@@ -81,42 +99,29 @@ jobs:
       - name: 安装依赖
         run: make install
 
-      - name: 构建当前原生架构
-        run: make build TARGET_OS=linux TARGET_ARCH=${{ matrix.arch }} VERSION="${{ github.ref_name }}"
+      - name: 构建正式部署包
+        run: >-
+          make package
+          TARGET_OS=linux
+          TARGET_ARCH=${{ matrix.arch }}
+          VERSION="${{ github.event.release.tag_name }}"
 
-      - name: 验证生产二进制
+      - name: 验证正式部署包中的生产二进制
         run: make smoke TARGET_OS=linux TARGET_ARCH=${{ matrix.arch }}
 
-      - name: 上传构建产物
+      - name: 暂存正式部署包
         uses: actions/upload-artifact@v7
         with:
-          name: gofi-linux-${{ matrix.arch }}
-          path: output/*
+          name: release-linux-${{ matrix.arch }}
+          path: |
+            output/*.tar.gz
+            output/*.tar.gz.sha256
           if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
 
-  release:
-    name: 创建 GitHub Release
-    needs: binaries
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: write
-
-    steps:
-      - name: 下载全部构建产物
-        uses: actions/download-artifact@v8
-        with:
-          pattern: gofi-linux-*
-          path: output
-          merge-multiple: true
-
-      - name: 创建 GitHub Release
-        uses: softprops/action-gh-release@v3
-        with:
-          generate_release_notes: true
-          files: output/*
-
-  docker:
-    name: 发布原生镜像 ${{ matrix.arch }}
+  release-docker:
+    name: 正式 Docker linux/${{ matrix.arch }}
     needs: verify
     strategy:
       fail-fast: false
@@ -129,8 +134,10 @@ jobs:
     runs-on: ${{ matrix.runner }}
 
     steps:
-      - name: 检出代码
+      - name: 检出 Release 对应标签
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name }}
 
       - name: 登录 Docker Hub
         uses: docker/login-action@v4
@@ -138,31 +145,31 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
 
-      - name: 构建原生镜像
+      - name: 构建原生正式镜像
         env:
           IMAGE: ${{ secrets.DOCKER_USERNAME }}/gofi
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           docker build \
-            --build-arg VERSION="${{ github.ref_name }}" \
-            --tag "$IMAGE:${{ github.ref_name }}-${{ matrix.arch }}" \
-            --tag "$IMAGE:latest-${{ matrix.arch }}" \
+            --build-arg VERSION="$RELEASE_TAG" \
+            --tag "$IMAGE:$RELEASE_TAG-${{ matrix.arch }}" \
             .
 
-      - name: 验证原生镜像
+      - name: 验证原生正式镜像
         env:
           IMAGE: ${{ secrets.DOCKER_USERNAME }}/gofi
-        run: sh scripts/docker-smoke.sh "$IMAGE:${{ github.ref_name }}-${{ matrix.arch }}"
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: sh scripts/docker-smoke.sh "$IMAGE:$RELEASE_TAG-${{ matrix.arch }}"
 
-      - name: 推送架构镜像
+      - name: 推送版本架构镜像
         env:
           IMAGE: ${{ secrets.DOCKER_USERNAME }}/gofi
-        run: |
-          docker push "$IMAGE:${{ github.ref_name }}-${{ matrix.arch }}"
-          docker push "$IMAGE:latest-${{ matrix.arch }}"
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: docker push "$IMAGE:$RELEASE_TAG-${{ matrix.arch }}"
 
-  manifest:
-    name: 发布多架构清单
-    needs: docker
+  release-manifest:
+    name: 发布多架构 Docker 清单
+    needs: release-docker
     runs-on: ubuntu-24.04
 
     steps:
@@ -172,16 +179,46 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
 
-      - name: 合并并推送多架构清单
+      - name: 合并并推送版本清单
         env:
           IMAGE: ${{ secrets.DOCKER_USERNAME }}/gofi
-          VERSION: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          docker manifest create "$IMAGE:$VERSION" \
-            "$IMAGE:$VERSION-amd64" \
-            "$IMAGE:$VERSION-arm64"
-          docker manifest push "$IMAGE:$VERSION"
+          docker manifest create "$IMAGE:$RELEASE_TAG" \
+            "$IMAGE:$RELEASE_TAG-amd64" \
+            "$IMAGE:$RELEASE_TAG-arm64"
+          docker manifest push "$IMAGE:$RELEASE_TAG"
+
+      - name: 合并并推送稳定版 latest 清单
+        if: ${{ github.event.release.prerelease == false }}
+        env:
+          IMAGE: ${{ secrets.DOCKER_USERNAME }}/gofi
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
           docker manifest create "$IMAGE:latest" \
-            "$IMAGE:latest-amd64" \
-            "$IMAGE:latest-arm64"
+            "$IMAGE:$RELEASE_TAG-amd64" \
+            "$IMAGE:$RELEASE_TAG-arm64"
           docker manifest push "$IMAGE:latest"
+
+  attach-assets:
+    name: 附加资产到现有 GitHub Release
+    needs: [release-packages, release-manifest]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: 下载全部正式部署包
+        uses: actions/download-artifact@v8
+        with:
+          pattern: release-linux-*
+          path: output
+          merge-multiple: true
+
+      - name: 确认 Release 已存在并上传资产
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
+          gh release upload "$RELEASE_TAG" output/* --repo "$GITHUB_REPOSITORY" --clobber

@@ -40,6 +40,7 @@ make dev
 ```bash
 make check
 make build
+make package
 make smoke
 ```
 
@@ -65,6 +66,7 @@ export GOFI_ENABLE_DEBUG="false"
 - [Contributing](./doc/contributing.md)
 - [Upgrade, Backup, and Restore](./doc/upgrade.md)
 - [Security Deployment Checklist](./doc/security.md)
+- [Build and Release Process](./doc/release.md)
 
 ## 🖼️ Preview
 

@@ -10,6 +10,7 @@ Gofi 是一款现代化、开源的 Web 文件索引与管理器，前后端全�
 - [配置说明](./config.md)
 - [升级、备份与恢复](./upgrade.md)
 - [安全部署检查](./security.md)
+- [构建与发布流程](./release.md)
 - [发布检查清单](./release-checklist.md)
 - [常见问题](./faq.md)
 - [贡献指南](./contributing.md)

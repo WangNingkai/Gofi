@@ -150,7 +150,7 @@
 
 ## M4 稳定版发布
 
-> M4 的代码、迁移、文档、可复现构建、备份演练和 linux/amd64 容器验收已完成。发布流水线已改为在 amd64 与 arm64 原生 GitHub Runner 上分别构建，再合并 Docker manifest；按维护者要求尚未推送远端，无法取得 Runner 结果，因此里程碑保持 Blocked，不伪造多架构通过。
+> M4 的代码、迁移、文档、可复现构建、备份演练和 linux/amd64 容器验收已完成。每次 push/PR 均构建双架构测试部署包；正式流水线只由已发布 GitHub Release 触发，并在 amd64 与 arm64 原生 GitHub Runner 上构建后合并 Docker manifest。按维护者要求尚未推送远端，无法取得 Runner 结果，因此里程碑保持 Blocked，不伪造多架构通过。
 
 ### 范围
 
@@ -212,3 +212,4 @@
 | 2026-07-31 | M4 | arm64 本地验收阻塞 | 旧版 QEMU 在 arm64 `go mod download` 中触发 Go runtime `sync: inconsistent mutex state`；需升级 Docker/QEMU 或由 GitHub Runner 验证 |
 | 2026-07-31 | M4 | 移除 Buildx/QEMU 构建路径，改用 GitHub 原生双架构 Runner | 每个架构使用普通 `go build`、`docker build` 和镜像冒烟，发布时用 `docker manifest` 合并架构镜像；等待首次远端运行验收 |
 | 2026-07-31 | M4 | 将归档的 `github.com/go-xorm/xorm` 与 CGO SQLite 驱动迁移到 `xorm.io/xorm` 和 `modernc.org/sqlite` | 完整 race、无 CGO 后端测试、旧库 schema/UTC 时间兼容、双架构静态产物、单二进制和 Docker 冒烟通过 |
+| 2026-08-03 | M4 | 将 CI 重构为每次 push/PR 产出可部署测试包，并将正式发布入口收敛到 GitHub Release `published` 事件 | tag push 不再创建 Release；本地 workflow 解析、部署包内容、完整检查和生产冒烟通过 |

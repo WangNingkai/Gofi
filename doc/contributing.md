@@ -19,7 +19,7 @@ make dev
 
 ```bash
 make check
-make build
+make package
 make smoke
 ```
 
@@ -52,3 +52,9 @@ docker build --tag gofi:local .
 - 不提交 `node_modules`、构建产物、数据库、日志或 `.gofi-work/`。
 
 所有新增的维护记录默认使用中文，现有面向国际用户的英文入口保持与中文说明的命令一致。
+
+## 持续集成产物
+
+每次 push 和 Pull Request 都会执行完整检查，并在成功后构建 linux/amd64 与 linux/arm64 测试部署包。可在对应 Actions 运行的 Artifacts 区域下载，测试包保留 14 天。
+
+推送 Git tag 只会得到测试部署包，不代表正式发布。正式发布必须在 GitHub Releases 页面创建并发布 Release，具体流程见[构建与发布流程](./release.md)。

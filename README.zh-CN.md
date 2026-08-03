@@ -40,6 +40,7 @@ make dev
 ```bash
 make check
 make build
+make package
 make smoke
 ```
 
@@ -65,6 +66,7 @@ export GOFI_ENABLE_DEBUG="false"
 - [贡献指南](./doc/contributing.md)
 - [升级、备份与恢复](./doc/upgrade.md)
 - [安全部署检查](./doc/security.md)
+- [构建与发布流程](./doc/release.md)
 
 ## 🖼️ 界面预览
 

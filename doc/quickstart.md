@@ -53,7 +53,7 @@ make build
 make smoke
 ```
 
-构建产物及 SHA-256 校验文件位于 `output/`。生产二进制已经嵌入前端资源。
+构建产物及 SHA-256 校验文件位于 `output/`。生产二进制已经嵌入前端资源。执行 `make package` 可以额外生成包含二进制、安装说明和校验文件的可部署 `tar.gz` 包。
 后端使用纯 Go SQLite 驱动，构建不依赖 CGO 或本机 C 编译器。
 
 ## 构建 Docker 镜像

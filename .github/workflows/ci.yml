@@ -1,16 +1,9 @@
-name: CI
+name: CI and test packages
 
 on:
   push:
-    branches:
-      - master
   pull_request:
-    branches:
-      - master
-
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -48,8 +41,8 @@ jobs:
       - name: 运行完整检查
         run: make check
 
-  binaries:
-    name: 原生二进制 ${{ matrix.arch }}
+  test-packages:
+    name: 测试部署包 linux/${{ matrix.arch }}
     needs: verify
     strategy:
       fail-fast: false
@@ -64,6 +57,8 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: 安装 Go
         uses: actions/setup-go@v5
@@ -86,22 +81,34 @@ jobs:
       - name: 安装依赖
         run: make install
 
-      - name: 构建当前原生架构
-        run: make build TARGET_OS=linux TARGET_ARCH=${{ matrix.arch }}
+      - name: 生成测试版本号
+        id: version
+        shell: bash
+        run: echo "value=test-${GITHUB_SHA:0:12}" >> "$GITHUB_OUTPUT"
 
-      - name: 验证生产二进制
+      - name: 构建可部署测试包
+        run: >-
+          make package
+          TARGET_OS=linux
+          TARGET_ARCH=${{ matrix.arch }}
+          VERSION="${{ steps.version.outputs.value }}"
+
+      - name: 验证测试包中的生产二进制
         run: make smoke TARGET_OS=linux TARGET_ARCH=${{ matrix.arch }}
 
-      - name: 上传构建产物
+      - name: 上传测试部署包
         uses: actions/upload-artifact@v7
         with:
-          name: gofi-linux-${{ matrix.arch }}
-          path: output/*
+          name: gofi-${{ steps.version.outputs.value }}-linux-${{ matrix.arch }}
+          path: |
+            output/*.tar.gz
+            output/*.tar.gz.sha256
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 14
+          compression-level: 0
 
-  docker:
-    name: 原生 Docker ${{ matrix.arch }}
+  docker-smoke:
+    name: 测试 Docker linux/${{ matrix.arch }}
     needs: verify
     strategy:
       fail-fast: false
@@ -117,8 +124,14 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v6
 
-      - name: 构建原生镜像
-        run: docker build --tag gofi:ci-${{ matrix.arch }} .
+      - name: 构建原生测试镜像
+        shell: bash
+        run: |
+          test_version="test-${GITHUB_SHA:0:12}"
+          docker build --build-arg VERSION="$test_version" --tag "gofi:$test_version-${{ matrix.arch }}" .
 
-      - name: 验证原生镜像
-        run: sh scripts/docker-smoke.sh gofi:ci-${{ matrix.arch }}
+      - name: 验证原生测试镜像
+        shell: bash
+        run: |
+          test_version="test-${GITHUB_SHA:0:12}"
+          sh scripts/docker-smoke.sh "gofi:$test_version-${{ matrix.arch }}"
