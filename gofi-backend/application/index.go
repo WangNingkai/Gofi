@@ -4,7 +4,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 	"strings"
 	"sync"
 
@@ -38,18 +37,11 @@ func (service *IndexService) Rebuild() error {
 	}
 	service.mutex.Lock()
 	defer service.mutex.Unlock()
-	entries, err := service.scan("/")
+	produce, err := service.scan("/")
 	if err != nil {
-		debug.FreeOSMemory()
 		return err
 	}
-	err = service.repository.ReplaceAll(entries)
-	// Large roots can temporarily retain hundreds of megabytes of file metadata
-	// and indexed text. Release the completed scan promptly instead of keeping
-	// that transient heap until a later GC cycle.
-	entries = nil
-	debug.FreeOSMemory()
-	return err
+	return service.repository.ReplaceAll(produce)
 }
 
 func (service *IndexService) Refresh(paths ...string) {
@@ -58,12 +50,15 @@ func (service *IndexService) Refresh(paths ...string) {
 	}
 	for _, logical := range paths {
 		logical = normalizeLogicalPath(logical)
-		entries, err := service.scan(logical)
+		produce, err := service.scan(logical)
 		if err != nil && !os.IsNotExist(err) && err != ErrNotFound {
 			continue
 		}
+		if err != nil {
+			produce = emptyFileIndexProducer
+		}
 		service.mutex.Lock()
-		_ = service.repository.ReplacePrefix(logical, entries)
+		_ = service.repository.ReplacePrefix(logical, produce)
 		service.mutex.Unlock()
 	}
 }
@@ -82,7 +77,7 @@ func (service *IndexService) Search(query string, includeContent bool, limit int
 	return service.repository.Search(query, includeContent, limit)
 }
 
-func (service *IndexService) scan(logical string) ([]db.FileIndex, error) {
+func (service *IndexService) scan(logical string) (repository.FileIndexProducer, error) {
 	root, err := service.configuration.StorageRoot()
 	if err != nil {
 		return nil, err
@@ -93,50 +88,51 @@ func (service *IndexService) scan(logical string) ([]db.FileIndex, error) {
 	}
 	start, err := local.ResolveExisting(logical)
 	if err != nil {
-		return []db.FileIndex{}, mapStorageError(err)
+		return nil, mapStorageError(err)
 	}
-	entries := make([]db.FileIndex, 0)
-	err = filepath.WalkDir(start, func(path string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return nil
-		}
-		if path == local.Root() {
-			return nil
-		}
-		if entry.Type()&os.ModeSymlink != 0 {
-			if entry.IsDir() {
-				return filepath.SkipDir
+	return func(yield func(db.FileIndex) error) error {
+		return filepath.WalkDir(start, func(path string, entry fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return nil
 			}
-			return nil
-		}
-		if tool.IsHiddenFile(entry.Name()) {
-			if entry.IsDir() {
-				return filepath.SkipDir
+			if path == local.Root() {
+				return nil
 			}
-			return nil
-		}
-		info, err := entry.Info()
-		if err != nil {
-			return nil
-		}
-		relative, err := filepath.Rel(local.Root(), path)
-		if err != nil {
-			return nil
-		}
-		indexed := db.FileIndex{
-			Path:        "/" + filepath.ToSlash(relative),
-			Name:        entry.Name(),
-			IsDirectory: info.IsDir(),
-			Size:        info.Size(),
-			Modified:    info.ModTime().Unix(),
-		}
-		if !info.IsDir() && info.Size() <= maxIndexedContentSize && tool.IsTextFile(path) {
-			if content, readErr := os.ReadFile(path); readErr == nil {
-				indexed.Content = string(content)
+			if entry.Type()&os.ModeSymlink != 0 {
+				if entry.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
 			}
-		}
-		entries = append(entries, indexed)
-		return nil
-	})
-	return entries, err
+			if tool.IsHiddenFile(entry.Name()) {
+				if entry.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			info, err := entry.Info()
+			if err != nil {
+				return nil
+			}
+			relative, err := filepath.Rel(local.Root(), path)
+			if err != nil {
+				return nil
+			}
+			indexed := db.FileIndex{
+				Path:        "/" + filepath.ToSlash(relative),
+				Name:        entry.Name(),
+				IsDirectory: info.IsDir(),
+				Size:        info.Size(),
+				Modified:    info.ModTime().Unix(),
+			}
+			if !info.IsDir() && info.Size() <= maxIndexedContentSize && tool.IsTextFile(path) {
+				if content, readErr := os.ReadFile(path); readErr == nil {
+					indexed.Content = string(content)
+				}
+			}
+			return yield(indexed)
+		})
+	}, nil
 }
+
+func emptyFileIndexProducer(_ func(db.FileIndex) error) error { return nil }

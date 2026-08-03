@@ -10,9 +10,11 @@ import (
 
 const fileIndexInsertBatchSize = 500
 
+type FileIndexProducer func(yield func(db.FileIndex) error) error
+
 type FileIndexRepository interface {
-	ReplaceAll(entries []db.FileIndex) error
-	ReplacePrefix(prefix string, entries []db.FileIndex) error
+	ReplaceAll(produce FileIndexProducer) error
+	ReplacePrefix(prefix string, produce FileIndexProducer) error
 	Search(query string, includeContent bool, limit int) ([]db.FileIndex, error)
 }
 
@@ -24,7 +26,7 @@ func NewFileIndexRepository(engine *xorm.Engine) FileIndexRepository {
 	return &fileIndexRepository{engine: engine}
 }
 
-func (repository *fileIndexRepository) ReplaceAll(entries []db.FileIndex) error {
+func (repository *fileIndexRepository) ReplaceAll(produce FileIndexProducer) error {
 	session := repository.engine.NewSession()
 	defer session.Close()
 	if err := session.Begin(); err != nil {
@@ -34,14 +36,14 @@ func (repository *fileIndexRepository) ReplaceAll(entries []db.FileIndex) error 
 		_ = session.Rollback()
 		return err
 	}
-	if err := insertFileIndexEntries(session, entries); err != nil {
+	if err := produceFileIndexEntries(session, produce); err != nil {
 		_ = session.Rollback()
 		return err
 	}
 	return session.Commit()
 }
 
-func (repository *fileIndexRepository) ReplacePrefix(prefix string, entries []db.FileIndex) error {
+func (repository *fileIndexRepository) ReplacePrefix(prefix string, produce FileIndexProducer) error {
 	session := repository.engine.NewSession()
 	defer session.Close()
 	if err := session.Begin(); err != nil {
@@ -52,11 +54,34 @@ func (repository *fileIndexRepository) ReplacePrefix(prefix string, entries []db
 		_ = session.Rollback()
 		return err
 	}
-	if err := insertFileIndexEntries(session, entries); err != nil {
+	if err := produceFileIndexEntries(session, produce); err != nil {
 		_ = session.Rollback()
 		return err
 	}
 	return session.Commit()
+}
+
+func produceFileIndexEntries(session *xorm.Session, produce FileIndexProducer) error {
+	entries := make([]db.FileIndex, 0, fileIndexInsertBatchSize)
+	flush := func() error {
+		if err := insertFileIndexEntries(session, entries); err != nil {
+			return err
+		}
+		entries = entries[:0]
+		return nil
+	}
+	if produce != nil {
+		if err := produce(func(entry db.FileIndex) error {
+			entries = append(entries, entry)
+			if len(entries) == fileIndexInsertBatchSize {
+				return flush()
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+	}
+	return flush()
 }
 
 func insertFileIndexEntries(session *xorm.Session, entries []db.FileIndex) error {
