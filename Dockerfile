@@ -13,6 +13,7 @@ COPY gofi-frontend/ ./
 RUN pnpm build
 
 FROM golang:${GO_VERSION}-alpine AS backend
+# Application version excludes the leading `v` reserved for Git Release tags.
 ARG VERSION=dev
 WORKDIR /src
 

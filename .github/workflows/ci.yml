@@ -134,4 +134,4 @@ jobs:
         shell: bash
         run: |
           test_version="test-${GITHUB_SHA:0:12}"
-          sh scripts/docker-smoke.sh "gofi:$test_version-${{ matrix.arch }}"
+          sh scripts/docker-smoke.sh "gofi:$test_version-${{ matrix.arch }}" "$test_version"

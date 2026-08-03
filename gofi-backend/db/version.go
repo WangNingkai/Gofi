@@ -1,16 +1,20 @@
 package db
 
-import "gofi/env"
+import (
+	"strings"
 
-// version ,will be replaced at compile time by [-ldflags="-X 'gofi/db.version=vX.X.X'"]
-var version = "UNKOWN VERSION"
+	"gofi/env"
+)
+
+// version is replaced at compile time with -ldflags="-X gofi/db.version=X.Y.Z".
+var version = "unknown"
 
 func init() {
 	if env.IsDevelop() {
-		version = "DEV"
+		version = "dev"
 	}
 }
 
 func Version() string {
-	return version
+	return strings.TrimPrefix(version, "v")
 }

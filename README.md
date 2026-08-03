@@ -46,6 +46,8 @@ make smoke
 
 Visit: http://localhost:3000
 
+Official GitHub Release tags must use `vX.Y.Z`; the Gofi application, deployment packages, and Docker images use the corresponding version without the leading `v` (`X.Y.Z`).
+
 ## 🛠️ Configuration
 
 Backend config via environment variables, e.g.:

@@ -1,6 +1,13 @@
 # 构建与发布流程
 
-Gofi 明确区分“测试构建”和“正式发布”。Git tag 只是代码引用，不能单独代表一个已发布版本。
+Gofi 明确区分“Git Release tag”和“程序版本”。Release tag 必须以小写 `v` 开头；程序界面、API、部署包和 Docker 镜像使用去掉 `v` 后的版本号。Git tag 只是代码引用，不能单独代表一个已发布版本。
+
+| 用途 | 示例 |
+| --- | --- |
+| GitHub Release tag | `v1.2.3` |
+| Gofi 程序版本 | `1.2.3` |
+| 部署包 | `gofi-1.2.3-linux-amd64.tar.gz` |
+| Docker 镜像 | `owner/gofi:1.2.3` |
 
 ## 每次推送：测试构建
 
@@ -42,14 +49,14 @@ on:
     types: [published]
 ```
 
-正式流程不会监听 tag push，也不会替用户创建 GitHub Release。维护者必须在 GitHub Releases 页面选择已验收提交、填写 `vX.Y.Z` 或 `vX.Y.Z-suffix` 标签和发布说明，然后点击发布。
+正式流程不会监听 tag push，也不会替用户创建 GitHub Release。维护者必须在 GitHub Releases 页面选择已验收提交、填写以小写 `v` 开头的 `vX.Y.Z` 或 `vX.Y.Z-suffix` 标签和发布说明，然后点击发布。流水线校验 tag 后会剥离开头的 `v`，将剩余部分作为 Gofi 程序版本。
 
 GitHub Release 发布后，流水线会：
 
 1. 检出 Release 对应的准确 tag 并再次执行完整检查。
 2. 构建、冒烟验证双架构正式部署包。
-3. 构建并推送版本化双架构 Docker 镜像与 manifest。
+3. 使用不带 `v` 的程序版本构建并推送双架构 Docker 镜像与 manifest。
 4. 仅在非预发布 Release 中更新 Docker `latest`。
 5. 确认 GitHub Release 已存在，再把部署包和校验文件附加到该 Release。
 
-正式流水线不会调用创建 Release 的 API。单独推送 `v*` tag 只会产生测试 artifact，不会生成正式附件、正式 Docker manifest 或 `latest`。
+正式流水线不会调用创建 Release 的 API。单独推送 `v*` tag 只会产生测试 artifact，不会生成正式附件、正式 Docker manifest 或 `latest`。例如发布 `v1.2.3` 后，Gofi 显示 `1.2.3`，正式包名和 Docker tag 也都使用 `1.2.3`。

@@ -16,7 +16,7 @@
 ## 创建正式发布
 
 - [ ] 在 GitHub Releases 页面创建 Release，而不是只推送 tag。
-- [ ] Release tag 使用 `vX.Y.Z` 或 `vX.Y.Z-suffix` 格式，并指向已验收提交。
+- [ ] Release tag 使用小写 `v` 开头的 `vX.Y.Z` 或 `vX.Y.Z-suffix` 格式，并指向已验收提交。
 - [ ] 预发布版本已勾选 Pre-release；只有稳定 Release 可以更新 Docker `latest`。
 - [ ] 发布 Release，触发 `Publish GitHub Release` workflow。
 
@@ -24,6 +24,7 @@
 
 - [ ] Release workflow 的完整检查通过。
 - [ ] Release 附件包含 linux/amd64、linux/arm64 的 `tar.gz` 和外部 SHA-256 文件。
+- [ ] Gofi 程序版本、附件名称和 Docker tag 已去掉 Release tag 开头的 `v`。
 - [ ] 下载并验证附件中的 `SHA256SUMS`、`INSTALL.txt` 与 `gofi` 可执行文件。
 - [ ] 版本对应的双架构 Docker manifest 可拉取并通过健康检查。
 - [ ] 稳定版的 `latest` 已更新；预发布没有覆盖 `latest`。

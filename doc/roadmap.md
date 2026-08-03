@@ -213,3 +213,4 @@
 | 2026-07-31 | M4 | 移除 Buildx/QEMU 构建路径，改用 GitHub 原生双架构 Runner | 每个架构使用普通 `go build`、`docker build` 和镜像冒烟，发布时用 `docker manifest` 合并架构镜像；等待首次远端运行验收 |
 | 2026-07-31 | M4 | 将归档的 `github.com/go-xorm/xorm` 与 CGO SQLite 驱动迁移到 `xorm.io/xorm` 和 `modernc.org/sqlite` | 完整 race、无 CGO 后端测试、旧库 schema/UTC 时间兼容、双架构静态产物、单二进制和 Docker 冒烟通过 |
 | 2026-08-03 | M4 | 将 CI 重构为每次 push/PR 产出可部署测试包，并将正式发布入口收敛到 GitHub Release `published` 事件 | tag push 不再创建 Release；本地 workflow 解析、部署包内容、完整检查和生产冒烟通过 |
+| 2026-08-03 | M4 | 统一 GitHub tag 与程序版本规则 | Release tag 强制使用 `vX.Y.Z`，Gofi 程序、部署包和 Docker tag 统一使用不带 `v` 的 `X.Y.Z` |

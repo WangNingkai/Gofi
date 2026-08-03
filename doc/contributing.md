@@ -58,3 +58,5 @@ docker build --tag gofi:local .
 每次 push 和 Pull Request 都会执行完整检查，并在成功后构建 linux/amd64 与 linux/arm64 测试部署包。可在对应 Actions 运行的 Artifacts 区域下载，测试包保留 14 天。
 
 推送 Git tag 只会得到测试部署包，不代表正式发布。正式发布必须在 GitHub Releases 页面创建并发布 Release，具体流程见[构建与发布流程](./release.md)。
+
+正式 Release tag 必须使用小写 `vX.Y.Z` 格式；Gofi 程序本身、部署包和 Docker 镜像使用不带 `v` 的 `X.Y.Z` 版本。

@@ -3,6 +3,7 @@ set -eu
 
 binary_path="${1:?production binary path is required}"
 version="${2:?version is required}"
+version="${version#v}"
 target_os="${3:?target OS is required}"
 target_arch="${4:?target architecture is required}"
 output_dir="${5:?output directory is required}"

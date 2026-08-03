@@ -2,10 +2,12 @@
 
 set -eu
 
-if [ "$#" -ne 1 ]; then
-	printf '用法：%s <gofi-binary>\n' "$0" >&2
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+	printf '用法：%s <gofi-binary> [expected-version]\n' "$0" >&2
 	exit 2
 fi
+
+expected_version="${2:-}"
 
 case "$1" in
 	/*) binary="$1" ;;
@@ -64,6 +66,15 @@ if [ "$attempt" -eq 30 ]; then
 	printf 'Gofi 未在限定时间内响应配置接口：\n' >&2
 	cat "$log_file" >&2
 	exit 1
+fi
+
+if [ -n "$expected_version" ]; then
+	curl --fail --silent --show-error "http://127.0.0.1:$port/api/configuration" >"$response_file"
+	if ! grep -F --quiet "\"version\":\"$expected_version\"" "$response_file"; then
+		printf '程序版本与预期不一致，预期：%s，响应：\n' "$expected_version" >&2
+		cat "$response_file" >&2
+		exit 1
+	fi
 fi
 
 if ! curl --fail --silent "http://127.0.0.1:$port/" | grep --quiet '<div id="root">'; then

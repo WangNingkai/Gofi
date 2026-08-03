@@ -1,13 +1,18 @@
 # Release notes
 
-# package.json
+正式发布只由 GitHub Release 的 `published` 事件触发，commit message 和单独的 tag push 都不会发布版本。
 
-修改 package.json 的 version
+## 版本规则
 
-## 提交
+- GitHub Release tag 必须使用小写 `vX.Y.Z` 或 `vX.Y.Z-suffix`。
+- Gofi 程序版本不包含 tag 开头的 `v`。
+- 例如 Release tag `v1.2.3` 对应程序版本、部署包版本和 Docker tag `1.2.3`。
 
-GitHub Action 的 commit 检查 action 存在 BUG,如果一次 push 有多个 commit,会逐一检查,会导致一个 release commit 失败.
+## 发布步骤
 
-在新建 release commit 之前需要将所有的更新都 push 到 remote repo,再新建 release commit 并 push,不然会导致失败.
+1. 推送已通过检查的提交，下载并验收 CI 生成的测试部署包。
+2. 在 GitHub Releases 页面创建 Release，选择目标提交并填写符合规则的 tag。
+3. 发布 Release，等待 `Publish GitHub Release` workflow 完成。
+4. 核对 Release 附件、SHA-256、Docker manifest 与程序显示版本。
 
-注:只有 "chore: release v1.0.2" 这种格式的 commit 才会触发发布流程,注意冒号和 release 后面的空格'
+完整流程与检查项见 `doc/release.md` 和 `doc/release-checklist.md`。

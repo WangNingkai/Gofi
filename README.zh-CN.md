@@ -46,6 +46,8 @@ make smoke
 
 访问：http://localhost:3000
 
+正式 GitHub Release tag 必须使用 `vX.Y.Z`；Gofi 程序、部署包和 Docker 镜像使用去掉开头 `v` 的对应版本 `X.Y.Z`。
+
 ## 🛠️ 配置说明
 
 后端通过环境变量配置，例如：

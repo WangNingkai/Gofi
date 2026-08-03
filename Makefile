@@ -12,6 +12,7 @@ MODE ?= production
 TARGET_OS ?= $(shell $(GO) env GOOS)
 TARGET_ARCH ?= $(shell $(GO) env GOARCH)
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+APP_VERSION := $(patsubst v%,%,$(VERSION))
 SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct 2>/dev/null || echo 0)
 OUTPUT_NAME := gofi-$(TARGET_OS)-$(TARGET_ARCH)-$(MODE)
 
@@ -86,7 +87,7 @@ fmt-check:
 build: clean-output build-frontend stage-frontend build-backend checksums
 
 package: build
-	sh scripts/package.sh "$(OUTPUT_DIR)/$(OUTPUT_NAME)" "$(VERSION)" "$(TARGET_OS)" "$(TARGET_ARCH)" "$(OUTPUT_DIR)"
+	sh scripts/package.sh "$(OUTPUT_DIR)/$(OUTPUT_NAME)" "$(APP_VERSION)" "$(TARGET_OS)" "$(TARGET_ARCH)" "$(OUTPUT_DIR)"
 
 build-frontend:
 	$(PNPM) --dir $(FRONTEND_DIR) build
@@ -101,11 +102,11 @@ build-backend:
 		CGO_ENABLED=0 GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) \
 		$(GO) build -tags=$(MODE) \
 		-trimpath -buildvcs=false \
-		-ldflags="-w -s -buildid= -X gofi/db.version=$(VERSION)" \
+		-ldflags="-w -s -buildid= -X gofi/db.version=$(APP_VERSION)" \
 		-o ../$(OUTPUT_DIR)/$(OUTPUT_NAME) .
 
 smoke:
-	sh scripts/smoke.sh "$(OUTPUT_DIR)/$(OUTPUT_NAME)"
+	sh scripts/smoke.sh "$(OUTPUT_DIR)/$(OUTPUT_NAME)" "$(APP_VERSION)"
 
 build-linux-amd64:
 	$(MAKE) build-backend TARGET_OS=linux TARGET_ARCH=amd64
@@ -141,6 +142,6 @@ clean-output:
 printinfo:
 	@printf '%s\n' \
 		"模式：$(MODE)" \
-		"版本：$(VERSION)" \
+		"版本：$(APP_VERSION)" \
 		"目标平台：$(TARGET_OS)/$(TARGET_ARCH)" \
 		"输出：$(OUTPUT_DIR)/$(OUTPUT_NAME)"
