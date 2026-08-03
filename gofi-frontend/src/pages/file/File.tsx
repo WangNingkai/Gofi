@@ -2,14 +2,13 @@ import { AlertTriangle, Download, File as FileIcon } from 'lucide-react'
 import React, { lazy, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router'
-import useSWR from 'swr'
-import { fetchFile, getFileDownloadUrl, getFilePathFromUrl, getFilePreviewUrl } from '@/features/files/api'
-import type { DirectoryData, FileData, FileInfo } from '@/features/files/types'
+import { getFileDownloadUrl, getFilePathFromUrl, getFilePreviewUrl } from '@/features/files/api'
+import type { FileData, FileInfo } from '@/features/files/types'
+import { useDirectory } from '@/features/files/useDirectory'
 import FileIconComponent from '../../components/FileIcon'
 import MainLayout from '../../components/layouts/MainLayout/Index'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
-import QueryKey from '../../constants/swr'
 import { FormatUtil } from '../../utils/format.util'
 import MimeTypeUtil, { PreviewableFileType } from '../../utils/mimetype.util'
 import PathUtil from '../../utils/path.util'
@@ -57,18 +56,10 @@ const File: React.FC<FileProps> = ({ fileData }) => {
         return getCurrentDirectory(fileInfo.path)
     }
 
-    const { data: directoryFiles } = useSWR(
-        currentFileInfo && previewableFileType === 'image'
-            ? [QueryKey.FILE_LIST, getDirectoryPath(currentFileInfo)]
-            : null,
-        async ([, dirPath]) => {
-            const response = await fetchFile(dirPath)
-            if (response.type === 'directory') {
-                return (response.data as DirectoryData).files
-            }
-            throw new Error('Path is not a directory')
-        },
-    )
+    const imageDirectoryPath = currentFileInfo && previewableFileType === 'image'
+        ? getDirectoryPath(currentFileInfo)
+        : ''
+    const { files: directoryFiles } = useDirectory(imageDirectoryPath)
 
     // 处理图片列表数据
     const processImageList = useCallback((fileInfo: FileInfo) => {
