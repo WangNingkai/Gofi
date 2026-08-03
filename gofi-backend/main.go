@@ -222,11 +222,5 @@ func registerAPIRoutes(app *gin.Engine, handler *controller.Handler) {
 
 		api.GET("/search", optionalAuth, handler.SearchFiles)
 		api.POST("/search/rebuild", requireAdmin, middleware.CSRFProtection(), handler.RebuildIndex)
-		api.POST("/share", requireAdmin, middleware.CSRFProtection(), handler.CreateShare)
-		api.GET("/share", requireAdmin, handler.ListShares)
-		api.DELETE("/share/:id", requireAdmin, middleware.CSRFProtection(), handler.RevokeShare)
-		api.GET("/shared/:token", handler.FetchSharedFile)
-		api.GET("/shared/:token/download", handler.DownloadSharedFile)
-		api.HEAD("/shared/:token/download", handler.DownloadSharedFile)
 	}
 }

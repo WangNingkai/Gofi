@@ -86,7 +86,6 @@ export default {
     'component.tooltip.delete': '删除',
     'component.tooltip.rename': '重命名',
     'component.tooltip.move': '移动',
-    'component.tooltip.share': '分享',
 
     // 上传组件
     'component.upload.drag-drop': '拖拽文件到此处或点击上传',

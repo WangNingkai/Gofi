@@ -51,9 +51,6 @@ export default {
     'pages.file-list.operation.move.title': 'Move to directory',
     'pages.file-list.name-placeholder': 'Enter a name',
     'pages.file-list.destination-placeholder': 'Enter the destination directory path',
-    'pages.shared.title': 'Gofi Share',
-    'pages.shared.description': 'This content is provided through a restricted, revocable share link',
-    'pages.shared.read-only': 'Read-only share',
     'pages.file-list.batch-delete': 'Delete {{count}} selected items',
     'pages.file-list.batch-delete-description': 'Each item is processed independently. Failed items remain and are summarized.',
     'pages.file-list.batch-partial': '{{count}} operations failed; the remaining items completed',
@@ -115,11 +112,6 @@ export default {
     'pages.setting.security.alert': 'After changing the password, please log in again with the new password',
     'pages.setting.password-required': 'Please enter a new password',
     'pages.setting.password-change-failed': 'Failed to change password',
-    'pages.setting.shares.title': 'Share links',
-    'pages.setting.shares.empty': 'No share links',
-    'pages.setting.shares.revoked': 'Revoked',
-    'pages.setting.shares.expires': 'Expires {{value}}',
-    'pages.setting.shares.revoke': 'Revoke share',
 
     // Exception pages
     'pages.exception.404.title': 'Page Not Found',

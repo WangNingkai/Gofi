@@ -14,7 +14,6 @@ type Application struct {
 	Files          *FileService
 	Uploads        *ResumableUploadService
 	Index          *IndexService
-	Shares         *ShareService
 }
 
 func New(engine *xorm.Engine, config *env.Configuration) *Application {
@@ -22,7 +21,6 @@ func New(engine *xorm.Engine, config *env.Configuration) *Application {
 	userRepository := repository.NewUserRepository(engine)
 	permissionRepository := repository.NewPermissionRepository(engine)
 	indexRepository := repository.NewFileIndexRepository(engine)
-	shareRepository := repository.NewShareRepository(engine)
 
 	configurationService := NewConfigurationService(configurationRepository, userRepository)
 	files := NewFileService(configurationService)
@@ -37,6 +35,5 @@ func New(engine *xorm.Engine, config *env.Configuration) *Application {
 		Files:          files,
 		Uploads:        uploads,
 		Index:          index,
-		Shares:         NewShareService(shareRepository, files),
 	}
 }

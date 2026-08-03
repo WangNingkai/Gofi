@@ -7,7 +7,6 @@ export default {
     'toast.logout-success': 'You have been logged out',
     'toast.already-root-dir': `It's already the root directory of storage`,
     'toast.upload-success': 'Upload succeeded',
-    'toast.link_copied': 'Link copied to clipboard',
     'toast.path-copied': 'Path copied to clipboard',
     'toast.network-error': 'Network connection failed',
     'toast.network-restored': 'Network connection restored',

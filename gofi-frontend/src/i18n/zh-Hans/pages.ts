@@ -52,9 +52,6 @@ export default {
     'pages.file-list.operation.move.title': '移动到目录',
     'pages.file-list.name-placeholder': '输入名称',
     'pages.file-list.destination-placeholder': '输入目标目录路径',
-    'pages.shared.title': 'Gofi 分享',
-    'pages.shared.description': '此内容由受限、可撤销的分享链接提供',
-    'pages.shared.read-only': '只读分享',
     'pages.file-list.batch-delete': '删除选中的 {{count}} 项',
     'pages.file-list.batch-delete-description': '每一项会独立执行；失败项将保留并显示汇总结果。',
     'pages.file-list.batch-partial': '{{count}} 项操作失败，其余项目已完成',
@@ -115,11 +112,6 @@ export default {
     'pages.setting.security.alert': '密码修改后，请使用新密码重新登录',
     'pages.setting.password-required': '请输入新密码',
     'pages.setting.password-change-failed': '密码修改失败',
-    'pages.setting.shares.title': '分享链接',
-    'pages.setting.shares.empty': '暂无分享链接',
-    'pages.setting.shares.revoked': '已撤销',
-    'pages.setting.shares.expires': '有效期至 {{value}}',
-    'pages.setting.shares.revoke': '撤销分享',
 
     // 异常页面
     'pages.exception.404.title': '页面未找到',

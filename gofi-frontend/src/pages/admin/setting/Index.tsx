@@ -20,7 +20,6 @@ import { changePassword } from '@/features/auth/api'
 import { clearSessionToken } from '@/features/auth/session'
 import { fetchAdminConfiguration, updateStoragePath } from '@/features/configuration/api'
 import { fileViewModeState, type FileViewMode } from '@/features/preferences/fileViewMode'
-import ShareManager from '@/features/shares/ShareManager'
 import { useCurrentUser } from '@/hook/user'
 import { tokenState } from '@/states/common.state'
 import Toast from '@/utils/toast.util'
@@ -255,7 +254,6 @@ const Setting: React.FC = () => {
                                 </Button>
                             </div>
                         )}
-                        <ShareManager />
                     </CardContent>
                 </Card>
             </div>

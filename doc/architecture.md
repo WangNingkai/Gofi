@@ -52,8 +52,7 @@ M2/M3 在相同边界中增加：
 
 - `ResumableUploadService`：磁盘会话、分片校验、完成合并、取消和过期清理。
 - `IndexService`：从本地存储生成可重建索引，文件变更后按路径前缀增量替换。
-- `ShareService`：创建、解析、列出和撤销范围受限的分享令牌。
-- `FileIndexRepository`、`ShareRepository`：只负责 SQLite 持久化，不读取用户文件。
+- `FileIndexRepository`：只负责 SQLite 索引持久化，不读取用户文件。
 
 ### HTTP 层
 

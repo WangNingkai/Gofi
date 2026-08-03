@@ -21,7 +21,6 @@ import {
     Pencil,
     RefreshCw,
     Search,
-    Share,
     Trash2,
     Upload,
     Filter,
@@ -83,9 +82,7 @@ import Toast from '../../utils/toast.util'
 import PageHeader from '../../components/PageHeader'
 import PathUtil from '../../utils/path.util'
 import { useDirectory } from '../../features/files/useDirectory'
-import { createShare } from '@/features/shares/api'
 import { searchFiles, type SearchResult } from '@/features/search/api'
-import { readSessionToken } from '@/features/auth/session'
 import { useAtom } from 'jotai'
 import { fileViewModeState } from '@/features/preferences/fileViewMode'
 import {
@@ -381,24 +378,6 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
-    }
-
-    const handleShare = async (file: FileInfo) => {
-        try {
-            const share = await createShare(file.path, 24)
-            const shareUrl = `${window.location.origin}/shared/${share.token}`
-            if (navigator.share) {
-                await navigator.share({
-                    title: file.name,
-                    url: shareUrl
-                })
-            } else {
-                await navigator.clipboard.writeText(shareUrl)
-                Toast.s(t('toast.link_copied'))
-            }
-        } catch (reason) {
-            Toast.e(reason instanceof Error ? reason.message : t('pages.exception.403.description'))
-        }
     }
 
     const handleDelete = (file: FileInfo) => {
@@ -1022,12 +1001,6 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                                         {t('tooltip.download')}
                                                     </DropdownMenuItem>
                                                 )}
-                                                {!item.isDirectory && capabilities.download && readSessionToken() && (
-                                                    <DropdownMenuItem onClick={e => { e.stopPropagation(); void handleShare(item); }}>
-                                                        <Share className="mr-2 h-4 w-4" />
-                                                        {t('tooltip.share')}
-                                                    </DropdownMenuItem>
-                                                )}
                                                 {capabilities.remove && (
                                                     <>
                                                         <DropdownMenuSeparator />
@@ -1159,10 +1132,6 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                                                         <Download className="mr-2 h-4 w-4" />
                                                                         {t('tooltip.download')}
                                                                     </DropdownMenuItem>
-                                                                    {readSessionToken() && <DropdownMenuItem onClick={e => { e.stopPropagation(); void handleShare(item); }}>
-                                                                        <Share className="mr-2 h-4 w-4" />
-                                                                        {t('tooltip.share')}
-                                                                    </DropdownMenuItem>}
                                                                 </>
                                                             )}
                                                             {capabilities.remove && (

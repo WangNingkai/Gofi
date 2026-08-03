@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"gofi/application"
 	"gofi/db"
@@ -181,19 +180,4 @@ func TestFileManagementAndResumableUpload(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, capped, 10)
 
-	share, err := restarted.Shares.Create("/documents", 24)
-	require.NoError(t, err)
-	resolved, err := restarted.Shares.Resolve(share.Token, "/a.txt")
-	require.NoError(t, err)
-	require.Equal(t, "/documents/a.txt", resolved)
-	require.NoError(t, restarted.Shares.Revoke(share.ID))
-	_, err = restarted.Shares.Resolve(share.Token, "/a.txt")
-	require.ErrorIs(t, err, application.ErrNotFound)
-
-	expired, err := restarted.Shares.Create("/moved.txt", 1)
-	require.NoError(t, err)
-	_, err = db.Engine().ID(expired.ID).Cols("expires_at").Update(&db.Share{ExpiresAt: time.Now().Add(-time.Hour)})
-	require.NoError(t, err)
-	_, err = restarted.Shares.Resolve(expired.Token, "/")
-	require.ErrorIs(t, err, application.ErrNotFound)
 }

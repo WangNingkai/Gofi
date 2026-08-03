@@ -65,7 +65,6 @@ func Migrate(target *xorm.Engine) error {
 		new(User),
 		new(Permission),
 		new(FileIndex),
-		new(Share),
 		new(SchemaMigration),
 	); err != nil {
 		return fmt.Errorf("migrate database: %w", err)

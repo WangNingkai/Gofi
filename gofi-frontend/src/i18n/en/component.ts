@@ -67,7 +67,6 @@ export default {
     'component.tooltip.delete': 'Delete',
     'component.tooltip.rename': 'Rename',
     'component.tooltip.move': 'Move',
-    'component.tooltip.share': 'Share',
     'component.upload.drag-drop': 'Drag files here or click to upload',
     'component.upload.select-files': 'Select files',
     'component.upload.uploading': 'Uploading...',

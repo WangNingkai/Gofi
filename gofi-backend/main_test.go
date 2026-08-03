@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -237,7 +236,7 @@ func TestCoreHTTPFlow(t *testing.T) {
 		require.False(t, results[1].Success)
 	})
 
-	t.Run("索引搜索与可撤销分享", func(t *testing.T) {
+	t.Run("索引搜索", func(t *testing.T) {
 		status, _ := performRequest(t, app, http.MethodPost, "/api/search/rebuild", nil, token)
 		require.Equal(t, http.StatusOK, status)
 		status, response := performRequest(t, app, http.MethodGet, "/api/search?q=hello", nil, token)
@@ -245,34 +244,6 @@ func TestCoreHTTPFlow(t *testing.T) {
 		var searchResults []db.FileIndex
 		require.NoError(t, json.Unmarshal(response.Data, &searchResults))
 		require.NotEmpty(t, searchResults)
-
-		status, response = performRequest(t, app, http.MethodGet, "/api/share", nil, token)
-		require.Equal(t, http.StatusOK, status)
-		var initialShares []db.Share
-		require.NoError(t, json.Unmarshal(response.Data, &initialShares))
-		require.Empty(t, initialShares)
-
-		status, response = performRequest(t, app, http.MethodPost, "/api/share", map[string]interface{}{
-			"path": "/hello.txt", "expiresInHours": 24,
-		}, token)
-		require.Equal(t, http.StatusOK, status)
-		var share application.CreatedShare
-		require.NoError(t, json.Unmarshal(response.Data, &share))
-		require.NotEmpty(t, share.Token)
-
-		status, response = performRequest(t, app, http.MethodGet, "/api/share", nil, token)
-		require.Equal(t, http.StatusOK, status)
-		var shares []db.Share
-		require.NoError(t, json.Unmarshal(response.Data, &shares))
-		require.Len(t, shares, 1)
-		require.Equal(t, share.ID, shares[0].ID)
-
-		status, _ = performRequest(t, app, http.MethodGet, "/api/shared/"+share.Token, nil, "")
-		require.Equal(t, http.StatusOK, status)
-		status, _ = performRequest(t, app, http.MethodDelete, fmt.Sprintf("/api/share/%d", share.ID), nil, token)
-		require.Equal(t, http.StatusOK, status)
-		status, _ = performRequest(t, app, http.MethodGet, "/api/shared/"+share.Token, nil, "")
-		require.Equal(t, http.StatusNotFound, status)
 	})
 
 	t.Run("管理员可以显式开放访客目录权限", func(t *testing.T) {

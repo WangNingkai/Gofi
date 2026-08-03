@@ -11,13 +11,8 @@ const Setting = lazy(() => import('../pages/admin/setting/Index'))
 const FileRouter = lazy(() => import('../pages/file/FileRouter'))
 const Login = lazy(() => import('../pages/Login'))
 const Setup = lazy(() => import('../pages/Setup'))
-const Shared = lazy(() => import('../pages/Shared'))
 
 export const setupRoutes: RouteObject[] = [
-    {
-        path: '/shared/:token',
-        element: <Shared />,
-    },
     {
         path: '/setup',
         element: <Setup />,
@@ -29,10 +24,6 @@ export const setupRoutes: RouteObject[] = [
 ]
 
 export const appRoutes: RouteObject[] = [
-    {
-        path: '/shared/:token',
-        element: <Shared />,
-    },
     {
         element: <PublicRoute />,
         children: [{ path: '/auth/login', element: <Login /> }],

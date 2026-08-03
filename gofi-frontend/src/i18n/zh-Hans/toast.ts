@@ -7,7 +7,6 @@ export default {
     'toast.logout-success': '你已退出系统',
     'toast.already-root-dir': '已经是根目录了',
     'toast.upload-success': '文件上传成功',
-    'toast.link_copied': '链接已复制到剪贴板',
     'toast.path-copied': '路径已复制到剪贴板',
     'toast.network-error': '网络连接失败',
     'toast.network-restored': '网络连接已恢复',
