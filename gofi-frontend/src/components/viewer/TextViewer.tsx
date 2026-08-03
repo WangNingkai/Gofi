@@ -4,9 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { AiOutlineFileMarkdown } from 'react-icons/ai'
 import { FormatUtil } from '../../utils/format.util'
 import Toast from '../../utils/toast.util'
-import LogoLoading from '../LogoLoading'
 import { Button } from '../ui/button'
 import TextViewerToolbar from './TextViewerToolbar'
+import { LoadingStage } from '@/components/Loading'
 
 const MarkdownPreview = lazy(() => import('./MarkdownPreview'))
 const ShikiHighlighter = lazy(() => import('../ShikiHighlighter'))
@@ -260,15 +260,15 @@ const TextViewer: React.FC<IProps> = ({
                 }
             />
             {/* 文本内容 */}
-            <div className="flex-1 overflow-auto">
-                {isLoading ? (
-                    <div className="flex h-full flex-col items-center justify-center">
-                        <LogoLoading />
-                        <span className="mt-2 text-sm font-medium text-muted-foreground">
-                            {t('component.viewer.loading')}
-                        </span>
-                    </div>
-                ) : displayText.length === 0 ? (
+            <div className="relative flex-1 overflow-auto" aria-busy={isLoading}>
+                <LoadingStage
+                    active={isLoading}
+                    variant="overlay"
+                    delay={200}
+                    minimumVisible={260}
+                    label={t('component.viewer.loading')}
+                />
+                {(!isLoading || plainText !== undefined) && (displayText.length === 0 ? (
                     <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                         {t('common.status.empty')}
                     </div>
@@ -277,7 +277,7 @@ const TextViewer: React.FC<IProps> = ({
                             className={`markdown-body vscode-markdown ${document.documentElement.classList.contains('dark') ? 'vscode-dark' : 'vscode-light'} px-4 py-2`}
                             style={{ fontSize: '15px', lineHeight: '1.7' }}
                         >
-                            <Suspense fallback={<LogoLoading />}>
+                            <Suspense fallback={<LoadingStage active variant="inline" delay={140} showLabel={false} />}>
                                 <MarkdownPreview content={displayText} />
                             </Suspense>
                             {isLongText && !showFullText && (
@@ -291,7 +291,7 @@ const TextViewer: React.FC<IProps> = ({
                 ) : (
                     <div className="min-h-full">
                         {shouldHighlight && supportsSyntaxHighlight ? (
-                            <Suspense fallback={<div className="flex justify-center p-8"><LogoLoading /></div>}>
+                            <Suspense fallback={<LoadingStage active variant="inline" delay={140} showLabel={false} className="flex w-full justify-center p-8" />}>
                                 <ShikiHighlighter
                                     key={themeVersion}
                                     code={displayText}
@@ -313,7 +313,7 @@ const TextViewer: React.FC<IProps> = ({
                             </div>
                         )}
                     </div>
-                )}
+                ))}
             </div>
         </div>
     )

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Download, File, Folder, Home, Loader2, RefreshCw, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Download, File, Folder, Home, RefreshCw, ShieldCheck } from 'lucide-react'
 import { useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import type { DirectoryData, FileInfo, FileResponse } from '@/features/files/types'
@@ -7,6 +7,7 @@ import { fetchSharedFile, sharedDownloadUrl } from '@/features/shares/api'
 import { Button } from '@/components/ui/button'
 import logo from '@/assets/logo.svg'
 import { FormatUtil } from '@/utils/format.util'
+import { LoadingBar, LoadingSkeleton, LoadingStage } from '@/components/Loading'
 
 export default function Shared() {
     const { t } = useTranslation()
@@ -62,7 +63,8 @@ export default function Shared() {
                     </div>
                     <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">{t('pages.shared.read-only')}</span>
                 </header>
-                <div className="flex items-center gap-2 border-b bg-muted/20 px-4 py-3">
+                <div className="relative flex items-center gap-2 border-b bg-muted/20 px-4 py-3">
+                    <LoadingBar active={loading} label={t('common.status.loading')} className="absolute inset-x-0 bottom-0" />
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setPath('/')} disabled={path === '/'} aria-label={t('component.viewer.toolbar.root')}>
                         <Home className="h-4 w-4" />
                     </Button>
@@ -71,11 +73,15 @@ export default function Shared() {
                     </Button>
                     <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground" title={path}>{path}</span>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setRetryKey((value) => value + 1)} disabled={loading} aria-label={t('common.action.refresh')}>
-                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                        <RefreshCw className="h-4 w-4" />
                     </Button>
                 </div>
-                <section className="min-h-64 p-4 sm:p-6">
-            {loading && !response && <div className="flex min-h-52 items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>}
+                <section className="min-h-64 p-4 sm:p-6" aria-busy={loading}>
+            {loading && !response && (
+                <LoadingStage active delay={160} label={t('common.loading')}>
+                    <LoadingSkeleton rows={3} />
+                </LoadingStage>
+            )}
             {error && (
                 <div className="flex min-h-52 flex-col items-center justify-center gap-3 text-center">
                     <p className="text-destructive">{error}</p>

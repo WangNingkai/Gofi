@@ -349,6 +349,10 @@ html,
   animation: gofi-loading-sheen 1.6s ease-in-out infinite;
 }
 
+.gofi-loading-bar {
+  animation: gofi-loading-slide 1.15s ease-in-out infinite;
+}
+
 @keyframes gofi-loading-spin {
   to { transform: rotate(360deg); }
 }
@@ -362,10 +366,17 @@ html,
   100% { transform: translateX(100%); }
 }
 
+@keyframes gofi-loading-slide {
+  0% { transform: translateX(-120%) scaleX(0.65); }
+  55% { transform: translateX(160%) scaleX(1); }
+  100% { transform: translateX(340%) scaleX(0.65); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .gofi-loading-orbit,
   .gofi-loading-core,
-  .gofi-loading-skeleton::after {
+  .gofi-loading-skeleton::after,
+  .gofi-loading-bar {
     animation-duration: 2.4s;
   }
 }

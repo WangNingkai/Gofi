@@ -3,6 +3,7 @@ import { RiRefreshLine, RiWifiOffLine } from 'react-icons/ri'
 import { useTranslation } from 'react-i18next'
 import { Button } from './ui/button'
 import Toast from '../utils/toast.util'
+import { LoadingIndicator } from './Loading'
 
 interface NetworkStatusProps {
     className?: string
@@ -62,7 +63,7 @@ const NetworkStatus: React.FC<NetworkStatusProps> = ({ className }) => {
                         title={t('common.retry')}
                     >
                         {isChecking
-                            ? <span className="animate-spin h-3 w-3 border border-white border-t-transparent rounded-full" />
+                            ? <LoadingIndicator size="sm" label={t('common.status.loading')} className="text-white [&_.gofi-loading-track]:border-white/30 [&_.gofi-loading-orbit]:border-t-white" />
                             : <RiRefreshLine className="h-3 w-3" />}
                     </Button>
                 </div>

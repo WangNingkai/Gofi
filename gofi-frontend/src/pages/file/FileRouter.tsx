@@ -5,13 +5,14 @@ import { fetchFile } from '@/features/files/api'
 import type { DirectoryData, FileData } from '@/features/files/types'
 import Files from './Files'
 import File from './File'
-import LogoLoading from '../../components/LogoLoading'
 import QueryKey from '../../constants/swr'
 import PathUtil from '../../utils/path.util'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/shared/api/client'
 import { Button } from '@/components/ui/button'
 import Toast from '@/utils/toast.util'
+import MainLayout from '@/components/layouts/MainLayout/Index'
+import { LoadingSkeleton, LoadingStage } from '@/components/Loading'
 
 const FileRouter: React.FC = () => {
     const location = useLocation()
@@ -33,14 +34,19 @@ const FileRouter: React.FC = () => {
     // 加载中显示加载动画
     if (isLoading) {
         return (
-            <div className="flex flex-col items-center justify-center py-16">
-                <LogoLoading className="mb-4" />
-                <div className="text-center mt-2">
-                    <span className="text-sm text-muted-foreground font-medium">
-                        {t('common.loading')}
-                    </span>
+            <MainLayout>
+                <div className="mx-auto w-full max-w-5xl" aria-busy="true">
+                    <LoadingStage active delay={160} label={t('common.loading')} className="border-0 bg-transparent">
+                        <div className="w-full space-y-5">
+                            <div className="space-y-2">
+                                <div className="gofi-loading-skeleton h-7 w-40 rounded-lg" />
+                                <div className="gofi-loading-skeleton h-3 w-64 max-w-full rounded" />
+                            </div>
+                            <LoadingSkeleton rows={6} />
+                        </div>
+                    </LoadingStage>
                 </div>
-            </div>
+            </MainLayout>
         )
     }
 
@@ -48,8 +54,9 @@ const FileRouter: React.FC = () => {
     if (error) {
         const traceId = error instanceof ApiError ? error.traceId : undefined
         return (
-            <div className="flex flex-col items-center justify-center py-16">
-                <div className="max-w-lg rounded-xl border bg-card p-6 text-center shadow-sm">
+            <MainLayout>
+                <div className="mx-auto flex max-w-lg flex-col items-center justify-center py-16">
+                <div className="w-full rounded-xl border bg-card p-6 text-center shadow-sm">
                     <h2 className="text-xl font-semibold mb-2">{t('pages.file-list.load-failed.title')}</h2>
                     <p className="text-muted-foreground mb-4">{error.message}</p>
                     {traceId && (
@@ -66,7 +73,8 @@ const FileRouter: React.FC = () => {
                         <Button onClick={() => void mutate()}>{t('common.retry')}</Button>
                     </div>
                 </div>
-            </div>
+                </div>
+            </MainLayout>
         )
     }
 

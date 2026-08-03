@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import ImageViewerToolbar from './ImageViewerToolbar'
-import LogoLoading from '../LogoLoading'
 import PathUtil from '@/utils/path.util'
 import Toast from '@/utils/toast.util'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { LoadingStage } from '@/components/Loading'
 
 /**
  * 图片查看器组件的属性接口
@@ -62,6 +62,7 @@ const ImageViewer: React.FC<IProps> = ({
     const [position, setPosition] = useState({ x: 0, y: 0 })
     // 图片加载状态
     const [isLoading, setIsLoading] = useState(true)
+    const [hasLoadedImage, setHasLoadedImage] = useState(false)
     const [loadError, setLoadError] = useState(false)
     // 全屏状态
     const [isFullscreen, setIsFullscreen] = useState(false)
@@ -409,6 +410,7 @@ const ImageViewer: React.FC<IProps> = ({
             <div
                 ref={imageContainerRef}
                 className="flex-1 overflow-hidden flex items-center justify-center relative rounded-lg"
+                aria-busy={isLoading}
                 style={{
                     // 防止拖拽时选中文本
                     userSelect: 'none',
@@ -417,24 +419,14 @@ const ImageViewer: React.FC<IProps> = ({
                     msUserSelect: 'none',
                 }}
             >
-                {/* 加载动画 - 保持和File页一致 */}
-                {isLoading && (
-                    <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-20 animate-in fade-in duration-200">
-                        <div className="flex flex-col items-center space-y-4">
-                            <LogoLoading />
-                            <div className="text-center space-y-2">
-                                <span className="text-sm text-muted-foreground font-medium">
-                                    {t('component.viewer.image-loading')}
-                                </span>
-                                {url && (
-                                    <div className="text-xs text-muted-foreground">
-                                        {PathUtil.getFileNameFromUrl(url)} ({currentIndex + 1}/{imageList.length})
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
+                <LoadingStage
+                    active={isLoading}
+                    variant="overlay"
+                    delay={220}
+                    minimumVisible={280}
+                    label={t('component.viewer.image-loading')}
+                    size="lg"
+                />
                 {loadError && (
                     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background p-6 text-center">
                         <p className="font-medium text-destructive">{t('component.viewer.image-load-error')}</p>
@@ -452,12 +444,13 @@ const ImageViewer: React.FC<IProps> = ({
                     ref={imageRef}
                     src={url}
                     alt={url ? PathUtil.getFileNameFromUrl(url) : t('common.file-type.image')}
-                    style={{ ...imageStyle, opacity: isLoading ? 0 : 1 }}
+                    style={{ ...imageStyle, opacity: isLoading && !hasLoadedImage ? 0 : 1 }}
                     onMouseDown={handleMouseDown}
-                    className=""
+                    className="transition-opacity duration-300"
                     draggable="false" // 禁用默认拖拽行为
                     decoding="async"
                     onLoad={() => {
+                        setHasLoadedImage(true)
                         setLoadError(false)
                         setIsLoading(false)
                         fitToScreen()

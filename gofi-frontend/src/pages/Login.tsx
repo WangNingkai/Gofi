@@ -1,5 +1,5 @@
 import { useAtom, useSetAtom } from 'jotai'
-import { FolderLock, Loader2, LogIn } from 'lucide-react'
+import { FolderLock, LogIn } from 'lucide-react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
@@ -12,6 +12,7 @@ import { languageState, tokenState } from '@/states/common.state'
 import Toast from '@/utils/toast.util'
 import ThemeSelect from '@/components/layouts/MainLayout/ThemeSelect'
 import LangSelect from '@/components/layouts/MainLayout/LangSelect'
+import { LoadingIndicator } from '@/components/Loading'
 
 interface FormErrors {
     username?: string
@@ -102,7 +103,7 @@ const Login: React.FC = () => {
                     </label>
                     <Button type="submit" className="w-full" disabled={processing}>
                         {processing
-                            ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ? <LoadingIndicator className="mr-2" size="sm" label={t('form.login.button.signing')} />
                             : <LogIn className="mr-2 h-4 w-4" />}
                         {processing ? t('form.login.button.signing') : t('form.login.button.signin')}
                     </Button>

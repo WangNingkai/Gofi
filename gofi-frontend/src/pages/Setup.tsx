@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, FolderOpen, Loader2, LockKeyhole, UserRound } from 'lucide-react'
+import { AlertCircle, CheckCircle2, FolderOpen, LockKeyhole, UserRound } from 'lucide-react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import QueryKey from '../constants/swr'
 import { fetchConfiguration, setup } from '@/features/configuration/api'
+import { LoadingIndicator } from '@/components/Loading'
 
 const Setup: React.FC = () => {
     const { t } = useTranslation()
@@ -159,7 +160,7 @@ const Setup: React.FC = () => {
                         )}
 
                         <Button className="w-full" disabled={processing} onClick={handleSubmit}>
-                            {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {processing && <LoadingIndicator className="mr-2" size="sm" label={t('pages.setup.button.processing')} />}
                             {processing ? t('pages.setup.button.processing') : t('pages.setup.button.submit')}
                         </Button>
                     </div>

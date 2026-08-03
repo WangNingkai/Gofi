@@ -87,9 +87,19 @@ export const LoadingStage: React.FC<LoadingStageProps> = ({
     variant = 'panel',
 }) => {
     const visible = useDelayedVisibility(active, delay, minimumVisible)
+    const [mounted, setMounted] = useState(visible)
     const keepLayout = variant === 'page' || variant === 'panel'
 
-    if (!visible && !keepLayout) return null
+    useEffect(() => {
+        let timer: number | undefined
+        if (visible) setMounted(true)
+        else if (mounted) timer = window.setTimeout(() => setMounted(false), 200)
+        return () => {
+            if (timer !== undefined) window.clearTimeout(timer)
+        }
+    }, [mounted, visible])
+
+    if (!mounted && !keepLayout) return null
     return (
         <div
             data-loading-visible={visible ? 'true' : 'false'}
@@ -119,3 +129,17 @@ export const LoadingSkeleton: React.FC<{ className?: string; rows?: number }> = 
         ))}
     </div>
 )
+
+export const LoadingBar: React.FC<{ active: boolean; className?: string; label?: string }> = ({
+    active,
+    className,
+    label = 'Loading',
+}) => {
+    const visible = useDelayedVisibility(active, 120, 220)
+    if (!visible) return null
+    return (
+        <div role="status" aria-label={label} className={cn('h-0.5 overflow-hidden bg-primary/10', className)}>
+            <span className="gofi-loading-bar block h-full w-1/3 rounded-full bg-primary" />
+        </div>
+    )
+}

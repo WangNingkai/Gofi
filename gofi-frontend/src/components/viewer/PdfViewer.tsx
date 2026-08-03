@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react'
 import ViewerToolbar from './ViewerToolbar'
+import { LoadingStage } from '@/components/Loading'
 
 interface IProps {
     url?: string
@@ -20,6 +21,9 @@ interface IProps {
 const PdfViewer: React.FC<IProps> = (props) => {
     const containerRef = useRef<HTMLDivElement>(null)
     const [isFullscreen, setIsFullscreen] = useState(false)
+    const [isLoading, setIsLoading] = useState(Boolean(props.url))
+
+    React.useEffect(() => setIsLoading(Boolean(props.url)), [props.url])
 
     // 全屏切换逻辑
     const handleFullscreen = useCallback(() => {
@@ -57,8 +61,14 @@ const PdfViewer: React.FC<IProps> = (props) => {
                 canFullscreen={true}
             />
             {/* PDF查看器 */}
-            <div className="flex-1">
-                <embed src={props.url} type="application/pdf" height="100%" width="100%"></embed>
+            <div className="relative flex-1" aria-busy={isLoading}>
+                <LoadingStage active={isLoading} variant="overlay" delay={200} label="PDF" />
+                <iframe
+                    src={props.url}
+                    title="PDF preview"
+                    className="h-full w-full border-0"
+                    onLoad={() => setIsLoading(false)}
+                />
             </div>
         </div>
     )

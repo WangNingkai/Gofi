@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react'
-import { AlertTriangle, FileText, Loader2, Upload } from 'lucide-react'
+import { AlertTriangle, FileText, Upload } from 'lucide-react'
 import { RiCheckboxCircleFill, RiCloseCircleFill } from 'react-icons/ri'
 import { useTranslation } from 'react-i18next'
 import { useUploadTask } from '@/features/upload/useUploadTask'
@@ -9,6 +9,7 @@ import Toast from '@/utils/toast.util'
 import { Button } from './ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog'
 import { Progress } from './ui/progress'
+import { LoadingIndicator } from './Loading'
 
 interface UploadDialogProps {
     open: boolean
@@ -96,7 +97,7 @@ export const UploadDialog: React.FC<UploadDialogProps> = ({
                                             {task.status === 'completed' && <RiCheckboxCircleFill className="text-green-600" />}
                                             {task.status === 'failed' && <RiCloseCircleFill className="text-destructive" />}
                                             {(task.status === 'pending' || task.status === 'uploading') &&
-                                                <Loader2 className="animate-spin text-primary" />}
+                                                <LoadingIndicator size="sm" label={t('component.upload.uploading')} />}
                                         </div>
                                         {task.status !== 'completed' && task.status !== 'failed' &&
                                             <Progress value={task.progress} className="h-1 mt-2" />}

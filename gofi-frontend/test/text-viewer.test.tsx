@@ -5,7 +5,6 @@ import TextViewer, { INITIAL_TEXT_PREVIEW_LENGTH } from '@/components/viewer/Tex
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 vi.mock('@/components/viewer/TextViewerToolbar', () => ({ default: () => <div data-toolbar /> }))
-vi.mock('@/components/LogoLoading', () => ({ default: () => <div data-loading /> }))
 vi.mock('@/components/ShikiHighlighter', () => ({
     default: ({ code }: { code: string }) => <pre data-highlight-length={code.length}>{code}</pre>,
 }))
@@ -40,7 +39,7 @@ describe('TextViewer performance boundaries', () => {
     it('renders empty files as empty instead of an endless loading state', async () => {
         const container = await renderViewer('', 'plaintext')
         expect(container.textContent).toContain('common.status.empty')
-        expect(container.querySelector('[data-loading]')).toBeNull()
+        expect(container.querySelector('[role="status"]')).toBeNull()
     })
 
     it('highlights only the initial slice and falls back to plain text for a huge full file', async () => {

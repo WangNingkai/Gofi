@@ -3,13 +3,13 @@ import {
     RiCheckboxCircleFill,
     RiCloseCircleFill,
     RiInformationFill,
-    RiLoader5Line,
     RiWifiOffLine,
     RiServerLine,
     RiTimeLine,
 } from 'react-icons/ri'
 import React from 'react'
 import { toast as SonnerToast } from 'sonner'
+import { LoadingIndicator } from '@/components/Loading'
 
 const Toast = {
     i(message: string) {
@@ -39,7 +39,7 @@ const Toast = {
     l(message: string) {
         SonnerToast.loading(message, {
             duration: 2000,
-            icon: <RiLoader5Line className="text-primary animate-spin" />,
+            icon: <LoadingIndicator size="sm" label={message} />,
         })
     },
     // 网络错误专用方法

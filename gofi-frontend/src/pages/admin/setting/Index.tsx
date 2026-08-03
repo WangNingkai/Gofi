@@ -5,7 +5,6 @@ import {
     Edit3,
     LayoutGrid,
     LayoutList,
-    Loader2,
     Monitor,
     Shield,
     UserRound,
@@ -34,6 +33,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import QueryKey from '@/constants/swr'
+import { LoadingIndicator, LoadingStage } from '@/components/Loading'
 
 const Setting: React.FC = () => {
     const [processing, setProcessing] = useState(false)
@@ -48,7 +48,7 @@ const Setting: React.FC = () => {
     const setToken = useSetAtom(tokenState)
     const navigate = useNavigate()
     const [fileViewMode, setFileViewMode] = useAtom(fileViewModeState)
-    const { data: config, mutate } = useSWR(QueryKey.CONFIG_DETAILS, fetchAdminConfiguration)
+    const { data: config, isLoading: isConfigLoading, mutate } = useSWR(QueryKey.CONFIG_DETAILS, fetchAdminConfiguration)
 
     useEffect(() => {
         if (config) {
@@ -144,12 +144,16 @@ const Setting: React.FC = () => {
                         <div className="rounded-xl border bg-background/70 p-4">
                             <Database className="mb-3 h-5 w-5 text-primary" />
                             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t('pages.setting.system-info.storage-path')}</p>
-                            <p className="mt-1 truncate text-sm font-medium" title={currentStoragePath}>{currentStoragePath ?? t('pages.setting.loading')}</p>
+                            <div className="mt-1 min-h-5 truncate text-sm font-medium" title={currentStoragePath}>
+                                {currentStoragePath ?? <LoadingStage active variant="inline" delay={160} showLabel={false} size="sm" />}
+                            </div>
                         </div>
                         <div className="rounded-xl border bg-background/70 p-4">
                             <Monitor className="mb-3 h-5 w-5 text-primary" />
                             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t('pages.setting.system-info.version')}</p>
-                            <p className="mt-1 text-sm font-medium">{config?.version ?? t('pages.setting.loading')}</p>
+                            <div className="mt-1 min-h-5 text-sm font-medium">
+                                {config?.version ?? <LoadingStage active variant="inline" delay={160} showLabel={false} size="sm" />}
+                            </div>
                         </div>
                         <div className="rounded-xl border bg-background/70 p-4">
                             <UserRound className="mb-3 h-5 w-5 text-primary" />
@@ -197,16 +201,18 @@ const Setting: React.FC = () => {
                                     <div className="flex justify-end gap-2">
                                         <Button variant="outline" onClick={cancelEdit} disabled={processing}><X className="h-4 w-4" />{t('form.cancel')}</Button>
                                         <Button onClick={() => void handleStoragePathSubmit()} disabled={processing || !storagePathInput?.trim()}>
-                                            {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                            {processing ? <LoadingIndicator size="sm" label={t('common.status.loading')} /> : <Check className="h-4 w-4" />}
                                             {t('common.action.save')}
                                         </Button>
                                     </div>
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-2">
-                                    <div className="min-w-0 flex-1 rounded-lg border bg-muted/40 px-3 py-2 font-mono text-xs" title={currentStoragePath}>{currentStoragePath ?? t('pages.setting.loading')}</div>
-                                    <Button variant="outline" size="icon" onClick={() => void copyStoragePath()} aria-label={t('common.action.copy')}><ClipboardCopy className="h-4 w-4" /></Button>
-                                    <Button variant="outline" onClick={() => setEditingField('storage')} disabled={editingField !== null}>
+                                    <div className="min-w-0 flex-1 rounded-lg border bg-muted/40 px-3 py-2 font-mono text-xs" title={currentStoragePath}>
+                                        {currentStoragePath ?? <LoadingStage active variant="inline" delay={160} showLabel={false} size="sm" />}
+                                    </div>
+                                    <Button variant="outline" size="icon" onClick={() => void copyStoragePath()} disabled={isConfigLoading} aria-label={t('common.action.copy')}><ClipboardCopy className="h-4 w-4" /></Button>
+                                    <Button variant="outline" onClick={() => setEditingField('storage')} disabled={editingField !== null || isConfigLoading}>
                                         <Edit3 className="h-4 w-4" />{t('common.action.edit')}
                                     </Button>
                                 </div>
@@ -233,7 +239,7 @@ const Setting: React.FC = () => {
                                 <div className="flex justify-end gap-2 md:col-span-3">
                                     <Button variant="outline" onClick={cancelEdit} disabled={processing}><X className="h-4 w-4" />{t('form.cancel')}</Button>
                                     <Button onClick={() => void handlePasswordSubmit()} disabled={processing || !currentPasswordInput || passwordInput.length < 10 || passwordInput !== passwordConfirmation}>
-                                        {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                        {processing ? <LoadingIndicator size="sm" label={t('common.status.loading')} /> : <Check className="h-4 w-4" />}
                                         {t('common.action.save')}
                                     </Button>
                                 </div>

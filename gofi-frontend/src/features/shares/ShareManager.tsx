@@ -1,28 +1,43 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { Ban, Link } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { listShares, revokeShare, type ShareRecord } from './api'
 import { Button } from '@/components/ui/button'
 import Toast from '@/utils/toast.util'
+import { LoadingIndicator, LoadingSkeleton, LoadingStage } from '@/components/Loading'
 
 export default function ShareManager() {
     const { t } = useTranslation()
     const [shares, setShares] = useState<ShareRecord[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState('')
+    const [revokingId, setRevokingId] = useState<number>()
 
-    const refresh = () => {
-        void listShares().then(setShares).catch((reason) => {
-            Toast.e(reason instanceof Error ? reason.message : String(reason))
-        })
-    }
+    const refresh = useCallback(async () => {
+        setLoading(true)
+        setError('')
+        try {
+            setShares(await listShares())
+        } catch (reason) {
+            const message = reason instanceof Error ? reason.message : String(reason)
+            setError(message)
+            Toast.e(message)
+        } finally {
+            setLoading(false)
+        }
+    }, [])
 
-    useEffect(refresh, [])
+    useEffect(() => { void refresh() }, [refresh])
 
     const revoke = async (id: number) => {
         try {
+            setRevokingId(id)
             await revokeShare(id)
-            refresh()
+            await refresh()
         } catch (reason) {
             Toast.e(reason instanceof Error ? reason.message : String(reason))
+        } finally {
+            setRevokingId(undefined)
         }
     }
 
@@ -33,7 +48,18 @@ export default function ShareManager() {
                 <h2 className="text-base font-semibold">{t('pages.setting.shares.title')}</h2>
             </div>
             <div className="divide-y border-y">
-                {shares.length === 0 &&
+                {loading && shares.length === 0 && (
+                    <LoadingStage active delay={160} label={t('common.loading')} className="border-0">
+                        <LoadingSkeleton rows={2} />
+                    </LoadingStage>
+                )}
+                {error && shares.length === 0 && (
+                    <div className="flex items-center justify-between gap-3 py-4 text-sm text-destructive">
+                        <span>{error}</span>
+                        <Button variant="outline" size="sm" onClick={() => void refresh()}>{t('common.retry')}</Button>
+                    </div>
+                )}
+                {!loading && !error && shares.length === 0 &&
                     <p className="py-4 text-sm text-muted-foreground">{t('pages.setting.shares.empty')}</p>}
                 {shares.map((share) => (
                     <div key={share.id} className="flex items-center justify-between gap-4 py-3">
@@ -46,8 +72,10 @@ export default function ShareManager() {
                             </p>
                         </div>
                         {!share.revoked &&
-                            <Button variant="ghost" size="icon" onClick={() => void revoke(share.id)} title={t('pages.setting.shares.revoke')}>
-                                <Ban className="h-4 w-4" />
+                            <Button variant="ghost" size="icon" onClick={() => void revoke(share.id)} disabled={revokingId === share.id} title={t('pages.setting.shares.revoke')}>
+                                {revokingId === share.id
+                                    ? <LoadingIndicator size="sm" label={t('common.status.loading')} />
+                                    : <Ban className="h-4 w-4" />}
                             </Button>}
                     </div>
                 ))}

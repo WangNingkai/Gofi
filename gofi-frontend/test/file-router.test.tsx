@@ -1,4 +1,4 @@
-import React, { act } from 'react'
+import React, { act, type PropsWithChildren } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { MemoryRouter } from 'react-router'
 import useSWR from 'swr'
@@ -16,7 +16,9 @@ vi.mock('@/pages/file/Files', () => ({
 vi.mock('@/pages/file/File', () => ({
     default: ({ fileData }: { fileData: FileData }) => <div data-kind="file">{fileData.file.name}</div>,
 }))
-vi.mock('@/components/LogoLoading', () => ({ default: () => <div data-loading /> }))
+vi.mock('@/components/layouts/MainLayout/Index', () => ({
+    default: ({ children }: PropsWithChildren) => <div data-layout>{children}</div>,
+}))
 
 const roots: Root[] = []
 
@@ -85,7 +87,8 @@ describe('FileRouter', () => {
     it('renders explicit loading and error states', async () => {
         vi.mocked(useSWR).mockReturnValue({ isLoading: true } as ReturnType<typeof useSWR>)
         const loading = await renderAt('/file/docs')
-        expect(loading.querySelector('[data-loading]')).not.toBeNull()
+        expect(loading.querySelector('[data-loading-visible]')).not.toBeNull()
+        expect(loading.querySelector('[role="status"]')).toBeNull()
 
         await act(async () => roots.pop()?.unmount())
         loading.remove()

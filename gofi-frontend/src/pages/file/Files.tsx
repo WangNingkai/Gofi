@@ -44,7 +44,6 @@ import {
 import type { DirectoryData, FileInfo } from '@/features/files/types'
 import FileIcon from '../../components/FileIcon'
 import MainLayout from '../../components/layouts/MainLayout/Index'
-import LogoLoading from '../../components/LogoLoading'
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
@@ -96,6 +95,7 @@ import {
     type FileTypeFilter,
     type SortDirection,
 } from '@/features/files/listModel'
+import { LoadingBar, LoadingSkeleton, LoadingStage } from '@/components/Loading'
 
 interface FilesProps {
     directoryData?: DirectoryData
@@ -484,6 +484,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
         const MAX_BREADCRUMBS_TO_SHOW = 4;
         return (
             <div className="sticky top-20 z-30 mb-6 space-y-2 rounded-xl border border-border bg-background/95 p-2 shadow-sm backdrop-blur">
+                <LoadingBar active={isValidating} label={t('common.status.loading')} className="absolute inset-x-0 bottom-0 rounded-b-xl" />
                 {/* 左侧：Home、Back、面包屑 */}
                 <div className="flex items-center space-x-2 min-w-0">
                     <TooltipProvider>
@@ -820,7 +821,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                         aria-label={t('tooltip.refresh')}
                                         className="h-8 w-8 p-0"
                                     >
-                                        <RefreshCw className={`h-4 w-4 ${isValidating ? 'animate-spin' : ''}`} />
+                                        <RefreshCw className="h-4 w-4" />
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
@@ -870,14 +871,9 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
     const renderFileList = () => {
         if (fetching && !fileInfos) {
             return (
-                <div className="flex flex-col items-center justify-center py-16">
-                    <LogoLoading className="mb-4" />
-                    <div className="text-center mt-2">
-                        <span className="text-sm text-muted-foreground font-medium">
-                            {t('common.loading')}
-                        </span>
-                    </div>
-                </div>
+                <LoadingStage active delay={160} label={t('common.loading')}>
+                    <LoadingSkeleton rows={6} />
+                </LoadingStage>
             )
         }
 

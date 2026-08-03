@@ -1,6 +1,7 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ViewerToolbar from './ViewerToolbar'
+import { LoadingStage } from '@/components/Loading'
 
 interface IProps {
     url?: string
@@ -17,6 +18,9 @@ interface IProps {
 
 const VideoViewer: React.FC<IProps> = (props) => {
     const { t } = useTranslation()
+    const [isLoading, setIsLoading] = useState(Boolean(props.url))
+
+    useEffect(() => setIsLoading(Boolean(props.url)), [props.url])
 
     return (
         <div className="w-full h-full flex flex-col relative rounded-lg overflow-hidden">
@@ -29,10 +33,13 @@ const VideoViewer: React.FC<IProps> = (props) => {
                 onDownload={props.onDownload}
             />
             {/* 视频播放器容器 - 适配视频长宽比 */}
-            <div className="flex h-[calc(100dvh-12rem)] min-h-[360px] w-full items-center justify-center overflow-hidden bg-black">
+            <div className="relative flex h-[calc(100dvh-12rem)] min-h-[360px] w-full items-center justify-center overflow-hidden bg-black" aria-busy={isLoading}>
+                <LoadingStage active={isLoading} variant="overlay" delay={200} label={t('component.viewer.loading')} />
                 <video
                     src={props.url}
                     controls
+                    onLoadedData={() => setIsLoading(false)}
+                    onError={() => setIsLoading(false)}
                     style={{
                         width: '100%',
                         height: '100%',
