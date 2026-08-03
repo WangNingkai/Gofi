@@ -90,6 +90,8 @@ import { useDirectory } from '../../features/files/useDirectory'
 import { createShare } from '@/features/shares/api'
 import { searchFiles, type SearchResult } from '@/features/search/api'
 import { readSessionToken } from '@/features/auth/session'
+import { useAtom } from 'jotai'
+import { fileViewModeState } from '@/features/preferences/fileViewMode'
 
 interface FilesProps {
     directoryData?: DirectoryData
@@ -104,7 +106,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
     const [uploadFiles, setUploadFiles] = useState<File[]>([])
     const [showUploadDialog, setShowUploadDialog] = useState(false)
     const [searchQuery, setSearchQuery] = useState<string>('')
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+    const [viewMode, setViewMode] = useAtom(fileViewModeState)
     const [fileTypeFilter, setFileTypeFilter] = useState<string>('all')
     const { capabilities } = useAccessCapabilities()
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)

@@ -2,6 +2,7 @@ import {
     Database,
     Shield,
     Monitor,
+    LayoutList,
     X,
     Edit3,
     Check,
@@ -25,9 +26,17 @@ import { RiSettings2Line } from 'react-icons/ri'
 import PageHeader from '../../../components/PageHeader'
 import { clearSessionToken } from '@/features/auth/session'
 import { tokenState } from '@/states/common.state'
-import { useSetAtom } from 'jotai'
+import { useAtom, useSetAtom } from 'jotai'
 import { useNavigate } from 'react-router-dom'
 import ShareManager from '@/features/shares/ShareManager'
+import { fileViewModeState, type FileViewMode } from '@/features/preferences/fileViewMode'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
 
 const Setting: React.FC = () => {
     const [processing, setProcessing] = useState(false)
@@ -41,6 +50,7 @@ const Setting: React.FC = () => {
     const { user } = useCurrentUser()
     const setToken = useSetAtom(tokenState)
     const navigate = useNavigate()
+    const [fileViewMode, setFileViewMode] = useAtom(fileViewModeState)
     const { data: config, mutate } = useSWR(QueryKey.CONFIG_DETAILS, fetchAdminConfiguration)
 
     useEffect(() => {
@@ -155,6 +165,38 @@ const Setting: React.FC = () => {
                                     <div className="text-sm text-muted-foreground">
                                         {user?.username || t('common.unknown')}
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 分割线 */}
+                        <div className="my-2 border-t" />
+
+                        {/* 显示设置 */}
+                        <div>
+                            <div className="flex items-center mb-2">
+                                <LayoutList className="h-5 w-5 mr-2 text-primary" />
+                                <span className="font-semibold text-base">{t('pages.setting.display.title')}</span>
+                            </div>
+                            <div className="text-sm text-muted-foreground mb-4">
+                                {t('pages.setting.display.description')}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="file-view-mode">{t('pages.setting.display.file-view-mode')}</Label>
+                                <Select
+                                    value={fileViewMode}
+                                    onValueChange={(value) => setFileViewMode(value as FileViewMode)}
+                                >
+                                    <SelectTrigger id="file-view-mode" className="w-full">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="list">{t('pages.setting.display.list')}</SelectItem>
+                                        <SelectItem value="grid">{t('pages.setting.display.grid')}</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                    {t('pages.setting.display.alert')}
                                 </div>
                             </div>
                         </div>

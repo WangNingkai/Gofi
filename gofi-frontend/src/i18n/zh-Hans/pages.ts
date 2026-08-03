@@ -91,6 +91,14 @@ export default {
     'pages.setting.system-info.version': '当前版本',
     'pages.setting.system-info.current-user': '当前用户',
 
+    // 设置 - 显示设置
+    'pages.setting.display.title': '显示设置',
+    'pages.setting.display.description': '配置文件首页的显示方式',
+    'pages.setting.display.file-view-mode': '默认文件视图',
+    'pages.setting.display.list': '列表视图',
+    'pages.setting.display.grid': '网格视图',
+    'pages.setting.display.alert': '此偏好保存在当前浏览器，并会在首页切换视图时自动更新',
+
     // 设置 - 存储设置
     'pages.setting.storage.title': '存储设置',
     'pages.setting.storage.description': '配置文件存储路径',

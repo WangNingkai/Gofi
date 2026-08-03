@@ -91,6 +91,14 @@ export default {
     'pages.setting.system-info.version': 'Current Version',
     'pages.setting.system-info.current-user': 'Current User',
 
+    // Settings - Display Settings
+    'pages.setting.display.title': 'Display Settings',
+    'pages.setting.display.description': 'Configure how files are shown on the home page',
+    'pages.setting.display.file-view-mode': 'Default File View',
+    'pages.setting.display.list': 'List View',
+    'pages.setting.display.grid': 'Grid View',
+    'pages.setting.display.alert': 'This preference is saved in this browser and updates automatically when you switch views on the home page',
+
     // Settings - Storage Settings
     'pages.setting.storage.title': 'Storage Settings',
     'pages.setting.storage.description': 'Configure file storage path',
