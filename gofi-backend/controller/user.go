@@ -25,7 +25,7 @@ func (handler *Handler) Login(ctx *gin.Context) {
 	}
 
 	ctx.SetSameSite(http.SameSiteStrictMode)
-	ctx.SetCookie(middleware.SessionCookieName, token, 0, "/api", "", ctx.Request.TLS != nil, true)
+	ctx.SetCookie(middleware.SessionCookieName, token, 0, "/api", "", middleware.IsSecureRequest(ctx.Request), true)
 	Success(ctx, token)
 }
 
@@ -63,7 +63,7 @@ func (handler *Handler) ChangePassword(ctx *gin.Context) {
 		return
 	}
 	ctx.SetSameSite(http.SameSiteStrictMode)
-	ctx.SetCookie(middleware.SessionCookieName, "", -1, "/api", "", ctx.Request.TLS != nil, true)
+	ctx.SetCookie(middleware.SessionCookieName, "", -1, "/api", "", middleware.IsSecureRequest(ctx.Request), true)
 	Success(ctx, nil)
 }
 
@@ -78,6 +78,6 @@ func (handler *Handler) Logout(ctx *gin.Context) {
 		return
 	}
 	ctx.SetSameSite(http.SameSiteStrictMode)
-	ctx.SetCookie(middleware.SessionCookieName, "", -1, "/api", "", ctx.Request.TLS != nil, true)
+	ctx.SetCookie(middleware.SessionCookieName, "", -1, "/api", "", middleware.IsSecureRequest(ctx.Request), true)
 	Success(ctx, nil)
 }

@@ -122,6 +122,29 @@ func TestCoreHTTPFlow(t *testing.T) {
 		require.Equal(t, http.StatusOK, userRecorder.Code)
 	})
 
+	t.Run("可信 HTTPS 代理下登录 Cookie 标记为 Secure", func(t *testing.T) {
+		configuration := env.GetConfiguration()
+		original := append([]string(nil), configuration.TrustedProxies...)
+		configuration.TrustedProxies = []string{"192.0.2.1"}
+		t.Cleanup(func() { configuration.TrustedProxies = original })
+
+		body, err := json.Marshal(map[string]string{
+			"username": "owner",
+			"password": adminPassword,
+		})
+		require.NoError(t, err)
+		request := httptest.NewRequest(http.MethodPost, "/api/user/login", bytes.NewReader(body))
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("X-Forwarded-Proto", "https")
+		recorder := httptest.NewRecorder()
+		app.ServeHTTP(recorder, request)
+		require.Equal(t, http.StatusOK, recorder.Code)
+
+		cookies := recorder.Result().Cookies()
+		require.NotEmpty(t, cookies)
+		require.True(t, cookies[0].Secure)
+	})
+
 	t.Run("文件权限与路径边界", func(t *testing.T) {
 		require.NoError(t, os.WriteFile(filepath.Join(storageDir, "hello.txt"), []byte("hello"), 0o600))
 

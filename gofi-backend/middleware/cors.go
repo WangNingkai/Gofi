@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -17,7 +18,7 @@ func CORS(ctx *gin.Context) {
 		ctx.Header("Vary", "Origin")
 		ctx.Header("Access-Control-Allow-Credentials", "true")
 		ctx.Header("Access-Control-Allow-Headers", "Content-Type, Accept-Language, Authorization")
-		ctx.Header("Access-Control-Allow-Methods", "POST, OPTIONS, GET, HEAD, DELETE")
+		ctx.Header("Access-Control-Allow-Methods", "POST, PUT, OPTIONS, GET, HEAD, DELETE")
 	}
 
 	if ctx.Request.Method == http.MethodOptions {
@@ -36,10 +37,7 @@ func originAllowed(request *http.Request, origin string) bool {
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return false
 	}
-	requestScheme := "http"
-	if request.TLS != nil {
-		requestScheme = "https"
-	}
+	requestScheme := effectiveRequestScheme(request)
 	if strings.EqualFold(parsed.Scheme+"://"+parsed.Host, requestScheme+"://"+request.Host) {
 		return true
 	}
@@ -49,4 +47,32 @@ func originAllowed(request *http.Request, origin string) bool {
 		}
 	}
 	return false
+}
+
+// IsSecureRequest reports the client-facing scheme. Forwarded headers are only
+// accepted when the direct peer is explicitly configured as a trusted proxy.
+func IsSecureRequest(request *http.Request) bool {
+	return effectiveRequestScheme(request) == "https"
+}
+
+func effectiveRequestScheme(request *http.Request) string {
+	if request.TLS != nil {
+		return "https"
+	}
+	if !requestFromTrustedProxy(request) {
+		return "http"
+	}
+	forwarded := strings.TrimSpace(strings.Split(request.Header.Get("X-Forwarded-Proto"), ",")[0])
+	if strings.EqualFold(forwarded, "https") {
+		return "https"
+	}
+	return "http"
+}
+
+func requestFromTrustedProxy(request *http.Request) bool {
+	host, _, err := net.SplitHostPort(request.RemoteAddr)
+	if err != nil {
+		host = request.RemoteAddr
+	}
+	return isIPInList(host, env.GetConfiguration().TrustedProxies)
 }
