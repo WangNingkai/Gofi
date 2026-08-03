@@ -8,19 +8,19 @@ interface IProps {
 
 const PageHeader: React.FC<IProps> = ({ icon, title, description }) => {
     return (
-        <div className="mb-8">
-            <div className="flex items-center space-x-3 mb-2">
+        <div className="mb-6">
+            <div className="mb-1.5 flex items-center gap-3">
                 {icon && (
-                    <div className="p-2 bg-primary/10 rounded-lg">
+                    <div className="rounded-xl border border-primary/10 bg-primary/10 p-2">
                         {icon}
                     </div>
                 )}
-                <h1 className="text-3xl font-bold text-foreground">
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">
                     {title}
                 </h1>
             </div>
             {description && (
-                <p className="text-muted-foreground">
+                <p className="max-w-2xl text-sm text-muted-foreground">
                     {description}
                 </p>
             )}

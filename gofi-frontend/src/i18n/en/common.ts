@@ -51,6 +51,7 @@ export default {
     'common.action.search': 'Search',
     'common.action.filter': 'Filter',
     'common.action.open': 'Open',
+    'common.action.copy': 'Copy',
     'common.action.close': 'Close',
     'common.action.back-to-home': 'Back to Home',
 
@@ -81,4 +82,4 @@ export default {
     'common.tip.unsupported-browser': 'Your browser does not support this feature',
     'common.open-in-new-tab': 'Open in new tab',
     'common.download': 'Download',
-} 
+}

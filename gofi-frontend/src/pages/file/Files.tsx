@@ -1095,7 +1095,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
     return (
         <>
             <MainLayout>
-                <div className="max-w-7xl mx-auto px-6 py-8">
+                <div className="space-y-6">
                     {/* 页面标题 */}
                     <PageHeader
                         icon={<FolderOpen className="h-6 w-6 text-primary" />}

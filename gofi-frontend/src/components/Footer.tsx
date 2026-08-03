@@ -9,10 +9,10 @@ const Footer: React.FC = () => {
     const { data: config } = useSWR(QueryKey.CONFIG, () => fetchConfiguration())
 
     return (
-        <footer className="bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="max-w-4xl mx-auto flex flex-col items-center py-6 px-4 space-y-2">
+        <footer className="border-t bg-background/70">
+            <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-6 py-4 sm:flex-row">
                 <nav>
-                    <ul className="flex flex-wrap justify-center gap-6 text-muted-foreground text-sm font-medium">
+                    <ul className="flex flex-wrap justify-center gap-4 text-xs font-medium text-muted-foreground">
                         <li>
                             <a
                                 href="https://github.com/Sloaix/Gofi"

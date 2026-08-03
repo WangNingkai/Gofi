@@ -51,6 +51,7 @@ export default {
     'common.action.search': '搜索',
     'common.action.filter': '过滤',
     'common.action.open': '打开',
+    'common.action.copy': '复制',
     'common.action.close': '关闭',
     'common.action.back-to-home': '返回首页',
 
@@ -82,4 +83,4 @@ export default {
 
     'common.open-in-new-tab': '新窗口打开',
     'common.download': '下载',
-} 
+}

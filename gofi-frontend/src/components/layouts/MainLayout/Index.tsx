@@ -22,7 +22,7 @@ const MainLayout: React.FC<IProps> = ({ children }) => {
     const { t } = useTranslation()
 
     return (
-        <div className="h-full w-full flex flex-col overflow-x-hidden">
+        <div className="min-h-full w-full flex flex-col overflow-x-hidden bg-muted/20">
             {/* 演示模式提示条幅 */}
             {EnvUtil.isPreviewMode && showDemoBanner && (
                 <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 relative">
@@ -42,23 +42,23 @@ const MainLayout: React.FC<IProps> = ({ children }) => {
                 </div>
             )}
             
-            <nav className="bg-white h-12 w-screen shadow dark:bg-gray-900 dark:border-b dark:border-gray-800 px-2 sm:px-0">
-                <div className="w-full h-full max-w-5xl mx-auto flex flex-row items-center p-4 sm:p-0">
+            <header className="sticky top-0 z-40 h-16 border-b bg-background/90 px-3 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75 sm:px-6">
+                <div className="mx-auto flex h-full w-full max-w-7xl items-center gap-2">
                     <Logo />
-                    <div className="flex-grow h-full">
+                    <div className="min-w-0 flex-1">
                         <NavMenu />
                     </div>
-                    <ThemeSelect />
-                    <LangSelect
-                        selectLang={language}
-                        onSelect={(lang: string) => {
-                            setLanguage(lang)
-                        }}
-                    />
-                    <LoginStatus />
+                    <div className="flex h-10 shrink-0 items-center rounded-xl border bg-card/80 p-0.5 shadow-sm">
+                        <ThemeSelect />
+                        <LangSelect
+                            selectLang={language}
+                            onSelect={(lang: string) => setLanguage(lang)}
+                        />
+                        <LoginStatus />
+                    </div>
                 </div>
-            </nav>
-            <div className="flex-grow w-full max-w-5xl mx-auto py-4 px-2 sm:px-0">{children}</div>
+            </header>
+            <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8">{children}</main>
             <Footer />
         </div>
     )

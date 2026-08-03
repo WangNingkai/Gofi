@@ -29,7 +29,7 @@ const LangSelect: React.FC<IProps> = (props) => {
         <div className="flex h-full">
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <button className="transition-all box-content h-full px-2 text-black-500 cursor-pointer flex items-center border-b-2 border-transparent text-gray-600 hover:text-primary dark:text-gray-300 dark:hover:text-primary focus:outline-none">
+                    <button className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" aria-label={languages.find((item) => item.lang === props.selectLang)?.label ?? 'Language'}>
                         <RiTranslate2 size={20} />
                     </button>
                 </DropdownMenuTrigger>

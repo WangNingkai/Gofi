@@ -1,4 +1,4 @@
-import { RiLoginBoxLine, RiLogoutBoxRLine } from 'react-icons/ri'
+import { LogIn, LogOut, Settings, UserRound } from 'lucide-react'
 import { useSetAtom } from 'jotai'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,10 +10,14 @@ import { useCurrentUser } from '../../../hook/user'
 import { tokenState } from '../../../states/common.state'
 import { logout } from '@/features/auth/api'
 import { clearSessionToken } from '@/features/auth/session'
-
-const buttonClass =
-    'transition-all box-content h-full px-4 text-black-500 cursor-pointer flex items-center border-b-2 border-transparent text-gray-600 hover:text-indigo-500'
-const textClass = 'ml-2 text-sm hidden sm:block'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 const LoginStatus: React.FC = () => {
     const { t } = useTranslation()
@@ -38,14 +42,32 @@ const LoginStatus: React.FC = () => {
     return (
         <div className="flex h-full">
             {user ? (
-                <button type="button" className={buttonClass} onClick={handleLogout}>
-                    <RiLogoutBoxRLine />
-                    <span className={textClass}>{t('menu.logout')}</span>
-                </button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <button type="button" className="flex h-9 items-center gap-2 rounded-lg px-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" aria-label={user.username}>
+                            <span className="grid size-6 place-items-center rounded-full bg-primary/10 text-primary">
+                                <UserRound className="h-3.5 w-3.5" />
+                            </span>
+                            <span className="hidden max-w-24 truncate text-xs font-medium sm:block">{user.username}</span>
+                        </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuLabel className="truncate">{user.username}</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => navigate('/admin/setting')}>
+                            <Settings className="mr-2 h-4 w-4" />
+                            {t('menu.setting')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => void handleLogout()}>
+                            <LogOut className="mr-2 h-4 w-4" />
+                            {t('menu.logout')}
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             ) : (
-                <Link to="/auth/login" className={buttonClass}>
-                    <RiLoginBoxLine />
-                    <span className={textClass}>{t('menu.login')}</span>
+                <Link to="/auth/login" className="flex h-9 items-center gap-2 rounded-lg px-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" aria-label={t('menu.login')}>
+                    <LogIn className="h-4 w-4" />
+                    <span className="hidden text-xs font-medium sm:block">{t('menu.login')}</span>
                 </Link>
             )}
         </div>

@@ -1,4 +1,5 @@
 export default {
+    'menu.primary': 'Primary navigation',
     'menu.file': 'File',
     'menu.setting': 'Setting',
     'menu.doc': 'Documentation',

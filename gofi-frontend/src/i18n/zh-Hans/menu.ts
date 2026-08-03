@@ -1,4 +1,5 @@
 export default {
+    'menu.primary': '主导航',
     'menu.file': '文件',
     'menu.setting': '设置',
     'menu.doc': 'Gofi文档',

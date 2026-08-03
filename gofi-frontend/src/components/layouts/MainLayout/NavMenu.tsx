@@ -25,8 +25,10 @@ const NavMenu: React.FC = () => {
   const { t } = useTranslation()
   const isActive = (link: string) => isNavLinkActive(location.pathname, link)
 
+  const visibleMoreItems = moreItems.filter(item => item.show)
+
   return (
-    <nav className="flex h-full items-center gap-2 px-2">
+    <nav className="flex h-full items-center gap-1 px-1 sm:px-3" aria-label={t('menu.primary')}>
       {navItems.map(item => {
         const active = isActive(item.to)
         let icon = item.icon
@@ -41,19 +43,19 @@ const NavMenu: React.FC = () => {
             to={item.to}
             aria-current={active ? 'page' : undefined}
             className={classNames(
-              'flex items-center gap-2 px-3 py-2 rounded-md transition-colors',
+              'flex h-10 items-center gap-2 rounded-lg px-2.5 text-sm transition-colors sm:px-3',
               active
-                ? 'text-primary font-semibold bg-primary/5'
-                : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
+                ? 'bg-primary/10 text-primary font-semibold'
+                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
             )}
           >
             {icon}
-            <span className="hidden sm:inline text-sm">{t(item.label)}</span>
+            <span className="hidden md:inline">{t(item.label)}</span>
           </Link>
         )
       })}
       {/* 移动端更多菜单 */}
-      <div className="sm:hidden">
+      {visibleMoreItems.length > 0 && <div className="sm:hidden">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-2 px-3 py-2 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/5">
@@ -62,7 +64,7 @@ const NavMenu: React.FC = () => {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {moreItems.filter(i => i.show).map(item => (
+            {visibleMoreItems.map(item => (
               <DropdownMenuItem asChild key={item.key}>
                 <a href={item.href} target="_blank" rel="noopener noreferrer" className="flex items-center">
                   {item.icon}
@@ -72,9 +74,9 @@ const NavMenu: React.FC = () => {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
+      </div>}
       {/* 桌面端更多菜单 */}
-      {moreItems.filter(i => i.show).map(item => (
+      {visibleMoreItems.map(item => (
         <a
           key={item.key}
           href={item.href}
