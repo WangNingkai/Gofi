@@ -74,7 +74,7 @@ const Setting: React.FC = () => {
             await mutate()
             setEditingField(null)
             Toast.s(t('toast.storage-change-success'))
-        } catch (error) {
+        } catch {
             Toast.e(t('pages.setting.storage-change-failed'))
         } finally {
             setProcessing(false)
@@ -111,7 +111,7 @@ const Setting: React.FC = () => {
             setToken(null)
             Toast.s(t('toast.password-change-success'))
             navigate('/auth/login', { replace: true })
-        } catch (error) {
+        } catch {
             Toast.e(t('pages.setting.password-change-failed'))
         } finally {
             setProcessing(false)

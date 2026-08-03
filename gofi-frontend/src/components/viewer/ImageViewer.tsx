@@ -49,6 +49,8 @@ const ImageViewer: React.FC<IProps> = ({
     const [scale, setScale] = useState(1) // 相对于fitToScreen的缩放倍数
     // 旋转角度，以度为单位
     const [rotation, setRotation] = useState(0)
+    const rotationRef = useRef(0)
+    rotationRef.current = rotation
     // 翻转状态，h为水平翻转，v为垂直翻转，1表示正常，-1表示翻转
     const [flip, setFlip] = useState({ h: 1, v: 1 })
     // 是否正在拖拽图片
@@ -79,13 +81,6 @@ const ImageViewer: React.FC<IProps> = ({
         animationFrameId: null as number | null,
     })
 
-    // 节流定时器引用
-    const throttleTimeoutRef = useRef<number | null>(null)
-
-    // 缩放限制常量
-    const MIN_SCALE = 0.1
-    const MAX_SCALE = 10
-
     /**
      * 重置所有变换状态到初始值
      */
@@ -102,18 +97,6 @@ const ImageViewer: React.FC<IProps> = ({
     useEffect(() => {
         resetTransformations()
     }, [url, resetTransformations])
-
-    /**
-     * 节流函数，限制函数执行频率
-     */
-    const throttle = useCallback((func: Function, delay: number) => {
-        if (throttleTimeoutRef.current) return
-
-        throttleTimeoutRef.current = window.setTimeout(() => {
-            func()
-            throttleTimeoutRef.current = null
-        }, delay)
-    }, [])
 
     /**
      * 处理键盘事件，支持左右箭头键导航
@@ -231,6 +214,14 @@ const ImageViewer: React.FC<IProps> = ({
         }
     }
 
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(document.fullscreenElement === containerRef.current)
+        }
+        document.addEventListener('fullscreenchange', handleFullscreenChange)
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    }, [])
+
     /**
      * 将图片适应屏幕大小 - centerInside模式
      * 只调整缩放和位置，不重置旋转和翻转
@@ -261,7 +252,7 @@ const ImageViewer: React.FC<IProps> = ({
             // 计算旋转后的宽高
             let imgWidth = naturalWidth
             let imgHeight = naturalHeight
-            const rot = ((rotation % 360) + 360) % 360 // 归一化到0-359
+            const rot = ((rotationRef.current % 360) + 360) % 360 // 归一化到0-359
             if (rot === 90 || rot === 270) {
                 imgWidth = naturalHeight
                 imgHeight = naturalWidth
@@ -274,7 +265,7 @@ const ImageViewer: React.FC<IProps> = ({
             setFitScale(fit)
             setScale(1) // 适应窗口时，scale=1
         }, 100)
-    }, [rotation])
+    }, [])
 
     /**
      * 重置图片到适应屏幕状态
@@ -311,7 +302,7 @@ const ImageViewer: React.FC<IProps> = ({
 
             return () => image.removeEventListener('load', handleLoad)
         }
-    }, [url]) // 移除 fitToScreen 依赖，避免重复调用
+    }, [url, fitToScreen])
 
     // 监听窗口大小改变，重新适应视口
     useEffect(() => {
@@ -327,15 +318,13 @@ const ImageViewer: React.FC<IProps> = ({
 
     // 清理定时器和动画帧，防止内存泄漏
     useEffect(() => {
+        const dragState = dragStateRef.current
         return () => {
             if (fitToScreenTimeoutRef.current) {
                 clearTimeout(fitToScreenTimeoutRef.current)
             }
-            if (throttleTimeoutRef.current) {
-                clearTimeout(throttleTimeoutRef.current)
-            }
-            if (dragStateRef.current.animationFrameId) {
-                cancelAnimationFrame(dragStateRef.current.animationFrameId)
+            if (dragState.animationFrameId) {
+                cancelAnimationFrame(dragState.animationFrameId)
             }
         }
     }, [])
@@ -392,7 +381,7 @@ const ImageViewer: React.FC<IProps> = ({
 
     useEffect(() => {
         fitToScreen()
-    }, [rotation])
+    }, [rotation, fitToScreen])
 
     return (
         <div ref={containerRef} className="w-full max-h-[600px] flex flex-col relative rounded-lg overflow-hidden">

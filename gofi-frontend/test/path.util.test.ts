@@ -1,6 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import PathUtil from '../src/utils/path.util'
 
+describe('PathUtil.extractPathFromUrl', () => {
+  it('normalizes equivalent directory URLs to one cache key', () => {
+    expect(PathUtil.extractPathFromUrl('/file/docs')).toBe('/docs')
+    expect(PathUtil.extractPathFromUrl('/file/docs/')).toBe('/docs')
+    expect(PathUtil.extractPathFromUrl('/file/')).toBe('/')
+  })
+})
+
 /**
  * test convertPathToSegments
  */

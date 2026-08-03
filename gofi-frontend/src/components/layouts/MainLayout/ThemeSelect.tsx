@@ -12,9 +12,7 @@ import {
     DropdownMenuTrigger,
 } from '../../ui/dropdown-menu'
 
-interface IProps {}
-
-const ThemeSelect: React.FC<IProps> = () => {
+const ThemeSelect: React.FC = () => {
     const [theme, setTheme] = useAtom(themeState)
     const { t } = useTranslation()
 
@@ -103,4 +101,4 @@ const ThemeSelect: React.FC<IProps> = () => {
     )
 }
 
-export default ThemeSelect 
+export default ThemeSelect

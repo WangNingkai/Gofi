@@ -16,8 +16,6 @@ interface IProps {
     canFullscreen?: boolean
 }
 
-const defualtProps: IProps = {}
-
 const PdfViewer: React.FC<IProps> = (props) => {
     const containerRef = useRef<HTMLDivElement>(null)
     const [isFullscreen, setIsFullscreen] = useState(false)
@@ -63,7 +61,5 @@ const PdfViewer: React.FC<IProps> = (props) => {
         </div>
     )
 }
-
-PdfViewer
 
 export default PdfViewer

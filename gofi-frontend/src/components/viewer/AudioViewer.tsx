@@ -15,10 +15,6 @@ interface IProps {
     showBackToOriginal?: boolean
 }
 
-const defualtProps: IProps = {
-    mime: 'audio/mp3',
-}
-
 const AudioViewer: React.FC<IProps> = (props) => {
     const { t } = useTranslation()
     
@@ -40,7 +36,5 @@ const AudioViewer: React.FC<IProps> = (props) => {
         </div>
     )
 }
-
-AudioViewer
 
 export default AudioViewer

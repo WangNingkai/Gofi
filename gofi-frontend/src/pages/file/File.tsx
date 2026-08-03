@@ -6,7 +6,6 @@ import useSWR from 'swr'
 import { fetchFile, getFileDownloadUrl, getFilePathFromUrl, getFilePreviewUrl } from '@/features/files/api'
 import type { DirectoryData, FileData, FileInfo } from '@/features/files/types'
 import FileIconComponent from '../../components/FileIcon'
-import LogoLoading from '../../components/LogoLoading'
 import MainLayout from '../../components/layouts/MainLayout/Index'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
@@ -14,7 +13,6 @@ import QueryKey from '../../constants/swr'
 import { FormatUtil } from '../../utils/format.util'
 import MimeTypeUtil, { PreviewableFileType } from '../../utils/mimetype.util'
 import PathUtil from '../../utils/path.util'
-import Files from './Files'
 import { useAccessCapabilities } from '../../features/permissions/useAccessCapabilities'
 
 const TextViewer = lazy(() => import('../../components/viewer/TextViewer'))
@@ -31,7 +29,12 @@ interface ImageListData {
 }
 
 interface FileProps {
-    fileData?: FileData
+    fileData: FileData
+}
+
+const getCurrentDirectory = (filePath: string) => {
+    const lastSlashIndex = filePath.lastIndexOf('/')
+    return lastSlashIndex <= 0 ? '/' : filePath.substring(0, lastSlashIndex)
 }
 
 const File: React.FC<FileProps> = ({ fileData }) => {
@@ -41,89 +44,13 @@ const File: React.FC<FileProps> = ({ fileData }) => {
     const [previewUrl, setPreviewUrl] = useState<string>()
     const [fileInfo, setFileInfo] = useState<FileInfo>()
     const [previewableFileType, setPreviewableFileType] = useState<PreviewableFileType | null>(null)
-    const [loading, setLoading] = useState(false)
-    const [imageLoading, setImageLoading] = useState(false)
     const [imageList, setImageList] = useState<string[]>([])
     const [currentImageIndex, setCurrentImageIndex] = useState(0)
-    const [loadingImageInfo, setLoadingImageInfo] = useState<{ name: string; index: number; total: number } | null>(
-        null,
-    )
     const [currentPath, setCurrentPath] = useState<string>('')
-    const [originalImageInfo, setOriginalImageInfo] = useState<{
-        url: string
-        path: string
-        index: number
-    } | null>(null)
     const { t } = useTranslation()
     const { capabilities } = useAccessCapabilities()
 
-    const pathQuery = () => {
-        return PathUtil.extractPathFromUrl(location.pathname)
-    }
-
-    // 获取文件/目录信息
-    const { data: fileResponse, error } = useSWR(
-        pathQuery() ? [QueryKey.FILE_DETAIL, pathQuery()] : null,
-        async ([, path]) => {
-            return fetchFile(path)
-        },
-    )
-
-    // 如果获取到的是目录，直接渲染Files组件
-    if (fileResponse?.type === 'directory') {
-        return <Files />
-    }
-
-    // 如果还在加载中，显示加载动画
-    if (!fileResponse && !error) {
-        return (
-            <div className="flex flex-col items-center justify-center py-16">
-                <LogoLoading className="mb-4" />
-                <div className="text-center mt-2">
-                    <span className="text-sm text-muted-foreground font-medium">{t('common.loading')}</span>
-                </div>
-            </div>
-        )
-    }
-
-    // 如果请求失败，显示错误信息
-    if (error) {
-        return (
-            <MainLayout>
-                <div className="flex flex-col items-center justify-center py-16">
-                    <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-                    <h2 className="text-xl font-semibold mb-2">{t('pages.file-preview.file-not-found.title')}</h2>
-                    <p className="text-muted-foreground mb-4">{t('pages.file-preview.file-not-found.description')}</p>
-                    <Button onClick={() => navigate('/file')}>{t('component.viewer.toolbar.return')}</Button>
-                </div>
-            </MainLayout>
-        )
-    }
-
-    // 确保是文件类型
-    if (fileResponse?.type !== 'file') {
-        return (
-            <MainLayout>
-                <div className="flex flex-col items-center justify-center py-16">
-                    <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-                    <h2 className="text-xl font-semibold mb-2">{t('pages.file-preview.file-not-found.title')}</h2>
-                    <p className="text-muted-foreground mb-4">{t('pages.file-preview.file-not-found.description')}</p>
-                    <Button onClick={() => navigate('/file')}>{t('component.viewer.toolbar.return')}</Button>
-                </div>
-            </MainLayout>
-        )
-    }
-
-    // 获取文件信息
-    const currentFileInfo =
-        fileData?.file || (fileResponse?.type === 'file' ? (fileResponse.data as FileData).file : undefined)
-
-    // 获取当前文件的目录路径
-    const getCurrentDirectory = (filePath: string) => {
-        const lastSlashIndex = filePath.lastIndexOf('/')
-        if (lastSlashIndex === -1) return ''
-        return filePath.substring(0, lastSlashIndex)
-    }
+    const currentFileInfo = fileData.file
 
     // 使用SWR获取目录文件列表
     const getDirectoryPath = (fileInfo: FileInfo) => {
@@ -144,7 +71,7 @@ const File: React.FC<FileProps> = ({ fileData }) => {
     )
 
     // 处理图片列表数据
-    const processImageList = (fileInfo: FileInfo) => {
+    const processImageList = useCallback((fileInfo: FileInfo) => {
         // 首先尝试从location.state获取数据
         const stateData = location.state?.imageListData as ImageListData | undefined
 
@@ -163,12 +90,6 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                     setDownloadUrl(getFileDownloadUrl(pathParam))
                 }
 
-                // 保存原始图片信息
-                setOriginalImageInfo({
-                    url: stateData.imageList[stateData.currentIndex],
-                    path: pathParam || '',
-                    index: stateData.currentIndex,
-                })
             }
             return
         }
@@ -197,15 +118,9 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                     setDownloadUrl(getFileDownloadUrl(pathParam))
                 }
 
-                // 保存原始图片信息
-                setOriginalImageInfo({
-                    url: imageUrls[finalIndex],
-                    path: pathParam || '',
-                    index: finalIndex,
-                })
             }
         }
-    }
+    }, [directoryFiles, location.state])
 
     useEffect(() => {
         if (currentFileInfo) {
@@ -241,14 +156,14 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                 setPreviewUrl(getFilePreviewUrl(currentFileInfo.path))
             }
         }
-    }, [currentFileInfo])
+    }, [currentFileInfo, processImageList])
 
     // 处理图片列表变化
     useEffect(() => {
         if (fileInfo && previewableFileType === 'image') {
             processImageList(fileInfo)
         }
-    }, [directoryFiles, fileInfo, previewableFileType])
+    }, [fileInfo, previewableFileType, processImageList])
 
     // 处理图片切换
     const handleImageChange = useCallback(
@@ -263,39 +178,10 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                     setDownloadUrl(getFileDownloadUrl(pathParam))
                 }
 
-                // 更新原始图片信息
-                setOriginalImageInfo({
-                    url: imageList[newIndex],
-                    path: pathParam || '',
-                    index: newIndex,
-                })
             }
         },
         [imageList],
     )
-
-    // 处理图片加载状态
-    const handleImageLoad = useCallback(() => {
-        setImageLoading(false)
-        setLoadingImageInfo(null)
-    }, [])
-
-    const handleImageError = useCallback(() => {
-        setImageLoading(false)
-        setLoadingImageInfo(null)
-    }, [])
-
-    // 处理图片加载开始
-    const handleImageLoadStart = useCallback(() => {
-        setImageLoading(true)
-        if (originalImageInfo) {
-            setLoadingImageInfo({
-                name: fileInfo?.name || '',
-                index: originalImageInfo.index + 1,
-                total: imageList.length,
-            })
-        }
-    }, [originalImageInfo, fileInfo, imageList])
 
     const getFileIcon = (fileInfo: FileInfo | undefined, type: PreviewableFileType | null) => {
         if (!fileInfo) return <FileIcon className="h-5 w-5 text-muted-foreground" />

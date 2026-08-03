@@ -35,7 +35,6 @@ export interface ViewerToolbarProps {
     // 其他
     className?: string
     children?: React.ReactNode // 用于插入特定Viewer的功能按钮
-    breadcrumbs?: React.ReactNode
 }
 
 const ViewerToolbar: React.FC<ViewerToolbarProps> = ({
@@ -49,7 +48,6 @@ const ViewerToolbar: React.FC<ViewerToolbarProps> = ({
     onNavigateBreadcrumb,
     className = '',
     children,
-    breadcrumbs
 }) => {
     const { t } = useTranslation()
     const MAX_BREADCRUMBS_TO_SHOW = 4;
@@ -62,7 +60,7 @@ const ViewerToolbar: React.FC<ViewerToolbarProps> = ({
         const breadcrumbs = [{ name: t('common.root-directory'), path: '/' }]
 
         let currentPathBuilder = ''
-        parts.forEach((part, index) => {
+        parts.forEach((part) => {
             currentPathBuilder += '/' + part
             breadcrumbs.push({
                 name: part,

@@ -1,5 +1,5 @@
 import React from 'react'
-import { ListOrdered, Download, ExternalLink } from 'lucide-react'
+import { ListOrdered } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
@@ -50,4 +50,4 @@ const TextViewerToolbar: React.FC<TextViewerToolbarProps> = ({
   )
 }
 
-export default TextViewerToolbar 
+export default TextViewerToolbar

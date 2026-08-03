@@ -2,15 +2,10 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import logo from '../assets/logo.svg'
 
-interface IProps {}
-
-const defualtProps: IProps = {}
-
-const PageLoading: React.FC<IProps> = (props) => {
+const PageLoading: React.FC = () => {
     const { t } = useTranslation()
     return (
-        <>
-            <div className="animate-fadein p-2 bg-background/80 backdrop-blur-sm w-full h-full flex flex-col items-center justify-center">
+        <div className="animate-fadein p-2 bg-background/80 backdrop-blur-sm w-full h-full flex flex-col items-center justify-center">
                 <div className="flex flex-col items-center space-y-8 max-w-sm mx-auto">
                     {/* Pixel风格Logo动画 */}
                     <div className="flex flex-col items-center space-y-4">
@@ -30,11 +25,8 @@ const PageLoading: React.FC<IProps> = (props) => {
                         </div>
                     </div>
                 </div>
-            </div>
-        </>
+        </div>
     )
 }
-
-PageLoading
 
 export default PageLoading

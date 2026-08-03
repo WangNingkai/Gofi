@@ -64,13 +64,6 @@ import {
 } from '../../components/ui/dropdown-menu'
 import { Input } from '../../components/ui/input'
 import { Checkbox } from '../../components/ui/checkbox'
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from '../../components/ui/select'
 import { Separator } from '../../components/ui/separator'
 import {
     Tooltip,
@@ -125,7 +118,6 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
     const [overwriteUpload, setOverwriteUpload] = useState(false)
     const [searchOpen, setSearchOpen] = useState(false)
     const [indexedResults, setIndexedResults] = useState<SearchResult[]>([])
-    const [searchPopoverAnchor, setSearchPopoverAnchor] = useState<null | HTMLElement>(null)
     const searchInputRef = useRef<HTMLInputElement>(null)
     const breadcrumbRef = useRef<HTMLDivElement>(null)
 
@@ -179,7 +171,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
         const breadcrumbs = [{ name: t('common.root-directory'), path: '/' }]
 
         let currentPathBuilder = ''
-        parts.forEach((part, index) => {
+        parts.forEach((part) => {
             currentPathBuilder += '/' + part
             breadcrumbs.push({
                 name: part,
@@ -607,9 +599,8 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 p-0"
-                                onClick={e => {
+                                onClick={() => {
                                     setSearchOpen(true)
-                                    setSearchPopoverAnchor(e.currentTarget)
                                 }}
                             >
                                 <Search className="h-4 w-4" />

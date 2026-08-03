@@ -1,9 +1,6 @@
 import React, { Suspense } from 'react'
 import { BrowserRouter, useRoutes } from 'react-router'
-import useSWR from 'swr'
-import { fetchConfiguration } from '@/features/configuration/api'
 import PageLoading from '../components/PageLoading'
-import QueryKey from '../constants/swr'
 import { appRoutes, setupRoutes } from './routes'
 import InitGuard from './InitGuard'
 
@@ -14,7 +11,6 @@ declare global {
 }
 
 const AppRoutes: React.FC = () => {
-    const { data: config, error } = useSWR(QueryKey.CONFIG, () => fetchConfiguration())
     // 用InitGuard包裹原有路由
     const guardedRoutes = [
         {

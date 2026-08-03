@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useCallback, useEffect, useRef } from 'react'
 import { AlertTriangle, FileText, Loader2, Upload } from 'lucide-react'
 import { RiCheckboxCircleFill, RiCloseCircleFill } from 'react-icons/ri'
 import { useTranslation } from 'react-i18next'
@@ -32,8 +32,9 @@ export const UploadDialog: React.FC<UploadDialogProps> = ({
     const { t } = useTranslation()
     const { tasks, error, isUploading, start } = useUploadTask(files, onUpload)
     const progress = overallUploadProgress(tasks)
+    const startedRef = useRef(false)
 
-    const startUpload = async () => {
+    const startUpload = useCallback(async () => {
         if (!canUpload) {
             const message = t('pages.exception.403.description')
             onError?.(message)
@@ -49,13 +50,18 @@ export const UploadDialog: React.FC<UploadDialogProps> = ({
             onError?.(message)
             Toast.e(message)
         }
-    }
+    }, [canUpload, onError, onSuccess, start, t])
 
     useEffect(() => {
-        if (open && files.length > 0 && !isUploading) {
+        if (!open) {
+            startedRef.current = false
+            return
+        }
+        if (files.length > 0 && !startedRef.current) {
+            startedRef.current = true
             void startUpload()
         }
-    }, [open])
+    }, [files.length, open, startUpload])
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>

@@ -1,5 +1,5 @@
 import React from 'react'
-import { RiGithubFill, RiFolder3Line, RiSettings2Line, RiBook2Line } from 'react-icons/ri'
+import { RiGithubFill, RiSettings2Line, RiBook2Line } from 'react-icons/ri'
 import { Folder, FolderOpen } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router'

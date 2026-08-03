@@ -66,6 +66,7 @@ test-backend:
 check: check-backend check-frontend
 
 check-frontend:
+	$(PNPM) --dir $(FRONTEND_DIR) lint
 	$(PNPM) --dir $(FRONTEND_DIR) typecheck
 	$(PNPM) --dir $(FRONTEND_DIR) test:run
 	$(PNPM) --dir $(FRONTEND_DIR) build

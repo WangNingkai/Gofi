@@ -45,7 +45,8 @@ export default class PathUtil {
         if (pathSegments[1] === 'file' && pathSegments.length > 2) {
             // 从 /file/path/to/file.jpg 中提取 path/to/file.jpg
             const filePath = '/' + pathSegments.slice(2).join('/')
-            return this.decodePath(filePath)
+            const decodedPath = this.decodePath(filePath)
+            return decodedPath.length > 1 ? decodedPath.replace(/\/+$/, '') : '/'
         }
         return '/'
     }
@@ -129,7 +130,7 @@ export default class PathUtil {
             // 如果无法从path参数获取，则尝试从pathname获取
             const pathnameParts = urlObject.pathname.split('/')
             return this.decodePath(pathnameParts[pathnameParts.length - 1])
-        } catch (e) {
+        } catch {
             return url
         }
     }

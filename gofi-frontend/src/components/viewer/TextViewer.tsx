@@ -21,8 +21,6 @@ interface IProps {
     onReturn?: () => void
     onNewWindow?: () => void
     onDownload?: () => void
-    onBackToOriginal?: () => void
-    showBackToOriginal?: boolean
 }
 
 const TextViewer: React.FC<IProps> = ({
@@ -34,8 +32,6 @@ const TextViewer: React.FC<IProps> = ({
     onReturn,
     onNewWindow,
     onDownload,
-    onBackToOriginal,
-    showBackToOriginal,
 }) => {
     const [plainText, setPlainText] = useState<string>()
     const [showLineNumbers, setShowLineNumbers] = useState(true)

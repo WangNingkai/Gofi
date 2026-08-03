@@ -11,8 +11,6 @@ import {
 import React from 'react'
 import { toast as SonnerToast } from 'sonner'
 
-type MessageType = 'info' | 'success' | 'error' | 'warn' | 'load' | 'network-error' | 'server-error' | 'timeout-error'
-
 const Toast = {
     i(message: string) {
         SonnerToast.info(message, {
