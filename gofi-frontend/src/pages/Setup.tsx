@@ -1,7 +1,7 @@
 import { AlertCircle, CheckCircle2, FolderOpen, Loader2, LockKeyhole, UserRound } from 'lucide-react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import useSWR from 'swr'
 import logo from '../assets/logo.svg'
 import PageLoading from '../components/PageLoading'

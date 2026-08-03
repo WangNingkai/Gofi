@@ -1,5 +1,5 @@
 import React, { lazy } from 'react'
-import { Navigate, RouteObject } from 'react-router-dom'
+import { Navigate, RouteObject } from 'react-router'
 import ProtectedRoute from './ProtectedRoute'
 import PublicRoute from './PublicRoute'
 import FileAccessRoute from './FileAccessRoute'

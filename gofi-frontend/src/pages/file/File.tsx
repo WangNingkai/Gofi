@@ -1,7 +1,7 @@
 import { AlertTriangle, Download, File as FileIcon } from 'lucide-react'
 import React, { lazy, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router'
 import useSWR from 'swr'
 import { fetchFile, getFileDownloadUrl, getFilePathFromUrl, getFilePreviewUrl } from '@/features/files/api'
 import type { DirectoryData, FileData, FileInfo } from '@/features/files/types'

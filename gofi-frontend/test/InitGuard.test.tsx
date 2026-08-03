@@ -1,6 +1,6 @@
 import React, { act } from 'react'
 import { createRoot, Root } from 'react-dom/client'
-import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
+import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import InitGuard from '../src/router/InitGuard'
 import { useConfiguration } from '../src/hook/configuration'

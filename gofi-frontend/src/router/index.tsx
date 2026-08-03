@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react'
-import { BrowserRouter, useRoutes } from 'react-router-dom'
+import { BrowserRouter, useRoutes } from 'react-router'
 import useSWR from 'swr'
 import { fetchConfiguration } from '@/features/configuration/api'
 import PageLoading from '../components/PageLoading'

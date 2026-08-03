@@ -1,5 +1,5 @@
 import React from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router'
 import useSWR from 'swr'
 import { fetchFile } from '@/features/files/api'
 import type { DirectoryData, FileData } from '@/features/files/types'

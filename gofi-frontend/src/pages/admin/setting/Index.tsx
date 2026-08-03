@@ -27,7 +27,7 @@ import PageHeader from '../../../components/PageHeader'
 import { clearSessionToken } from '@/features/auth/session'
 import { tokenState } from '@/states/common.state'
 import { useAtom, useSetAtom } from 'jotai'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import ShareManager from '@/features/shares/ShareManager'
 import { fileViewModeState, type FileViewMode } from '@/features/preferences/fileViewMode'
 import {

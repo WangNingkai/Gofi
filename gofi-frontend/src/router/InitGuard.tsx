@@ -1,5 +1,5 @@
 import React from 'react'
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router'
 import { useConfiguration } from '../hook/configuration'
 import PageLoading from '../components/PageLoading'
 

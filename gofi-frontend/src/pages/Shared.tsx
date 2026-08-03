@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Download, File, Folder, ShieldCheck } from 'lucide-react'
-import { useParams } from 'react-router-dom'
+import { useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import type { DirectoryData, FileInfo, FileResponse } from '@/features/files/types'
 import { fetchSharedFile, sharedDownloadUrl } from '@/features/shares/api'
