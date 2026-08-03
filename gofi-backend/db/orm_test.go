@@ -72,3 +72,16 @@ func TestMigrateLegacyDatabase(t *testing.T) {
 	require.True(t, legacyTime.Equal(user.Created), "%s != %s", legacyTime, user.Created)
 	require.True(t, legacyTime.Equal(user.Updated), "%s != %s", legacyTime, user.Updated)
 }
+
+func TestOpenConfiguresSQLiteForConcurrentReads(t *testing.T) {
+	require.NoError(t, Open(filepath.Join(t.TempDir(), "concurrent.db"), false))
+	t.Cleanup(func() { require.NoError(t, Close()) })
+
+	journalMode, err := Engine().QueryString("PRAGMA journal_mode")
+	require.NoError(t, err)
+	require.Equal(t, "wal", journalMode[0]["journal_mode"])
+
+	busyTimeout, err := Engine().QueryString("PRAGMA busy_timeout")
+	require.NoError(t, err)
+	require.Equal(t, "5000", busyTimeout[0]["timeout"])
+}

@@ -85,6 +85,22 @@ func TestCoreHTTPFlow(t *testing.T) {
 		require.NotEmpty(t, token)
 	})
 
+	t.Run("读取配置不会同步重建文件索引", func(t *testing.T) {
+		// 等待初始化触发的后台重建完成，再创建一个尚未进入索引的文件。
+		status, _ := performRequest(t, app, http.MethodPost, "/api/search/rebuild", nil, token)
+		require.Equal(t, http.StatusOK, status)
+		require.NoError(t, os.WriteFile(filepath.Join(storageDir, "not-indexed-by-config.txt"), []byte("sentinel"), 0o600))
+
+		status, _ = performRequest(t, app, http.MethodGet, "/api/configuration", nil, "")
+		require.Equal(t, http.StatusOK, status)
+		status, response := performRequest(t, app, http.MethodGet, "/api/search?q=not-indexed-by-config", nil, token)
+		require.Equal(t, http.StatusOK, status)
+		var results []db.FileIndex
+		require.NoError(t, json.Unmarshal(response.Data, &results))
+		require.Empty(t, results)
+		require.NoError(t, os.Remove(filepath.Join(storageDir, "not-indexed-by-config.txt")))
+	})
+
 	t.Run("登录 Cookie 可以访问受保护资源", func(t *testing.T) {
 		body, err := json.Marshal(map[string]string{
 			"username": "owner",
@@ -207,6 +223,12 @@ func TestCoreHTTPFlow(t *testing.T) {
 		require.NoError(t, json.Unmarshal(response.Data, &searchResults))
 		require.NotEmpty(t, searchResults)
 
+		status, response = performRequest(t, app, http.MethodGet, "/api/share", nil, token)
+		require.Equal(t, http.StatusOK, status)
+		var initialShares []db.Share
+		require.NoError(t, json.Unmarshal(response.Data, &initialShares))
+		require.Empty(t, initialShares)
+
 		status, response = performRequest(t, app, http.MethodPost, "/api/share", map[string]interface{}{
 			"path": "/hello.txt", "expiresInHours": 24,
 		}, token)
@@ -214,6 +236,13 @@ func TestCoreHTTPFlow(t *testing.T) {
 		var share application.CreatedShare
 		require.NoError(t, json.Unmarshal(response.Data, &share))
 		require.NotEmpty(t, share.Token)
+
+		status, response = performRequest(t, app, http.MethodGet, "/api/share", nil, token)
+		require.Equal(t, http.StatusOK, status)
+		var shares []db.Share
+		require.NoError(t, json.Unmarshal(response.Data, &shares))
+		require.Len(t, shares, 1)
+		require.Equal(t, share.ID, shares[0].ID)
 
 		status, _ = performRequest(t, app, http.MethodGet, "/api/shared/"+share.Token, nil, "")
 		require.Equal(t, http.StatusOK, status)

@@ -30,7 +30,10 @@ func (repository *shareRepository) Create(share *db.Share) error {
 
 func (repository *shareRepository) List() ([]db.Share, error) {
 	shares := make([]db.Share, 0)
-	err := repository.engine.Desc("id").Find(&shares)
+	// XORM's snake mapper stores the acronym field Share.ID as `i_d`.
+	// Keep the explicit column name aligned with the schema generated for both
+	// fresh and existing databases.
+	err := repository.engine.Desc("i_d").Find(&shares)
 	return shares, err
 }
 

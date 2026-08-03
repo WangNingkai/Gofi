@@ -66,9 +66,14 @@ func createApp() (*gin.Engine, error) {
 			tool.WithError(cleanupErr).Warn("清理过期上传会话失败")
 		}
 		go func() {
+			started := time.Now()
+			logger := tool.WithField("reason", "startup")
+			logger.Info("后台文件索引重建开始")
 			if rebuildErr := core.Index.Rebuild(); rebuildErr != nil {
-				tool.WithError(rebuildErr).Warn("后台文件索引重建失败")
+				logger.WithError(rebuildErr).WithField("duration_ms", time.Since(started).Milliseconds()).Warn("后台文件索引重建失败")
+				return
 			}
+			logger.WithField("duration_ms", time.Since(started).Milliseconds()).Info("后台文件索引重建完成")
 		}()
 	}
 	handler := controller.NewHandler(core)
@@ -119,6 +124,7 @@ func createApp() (*gin.Engine, error) {
 				)
 				return
 			}
+			middleware.DisableClientCaching(context)
 			indexBytes, err := env.EmbedStaticAssets.ReadFile("dist/index.html")
 			if err != nil {
 				controller.Failure(

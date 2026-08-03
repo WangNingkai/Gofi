@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"sync"
 
@@ -39,9 +40,16 @@ func (service *IndexService) Rebuild() error {
 	defer service.mutex.Unlock()
 	entries, err := service.scan("/")
 	if err != nil {
+		debug.FreeOSMemory()
 		return err
 	}
-	return service.repository.ReplaceAll(entries)
+	err = service.repository.ReplaceAll(entries)
+	// Large roots can temporarily retain hundreds of megabytes of file metadata
+	// and indexed text. Release the completed scan promptly instead of keeping
+	// that transient heap until a later GC cycle.
+	entries = nil
+	debug.FreeOSMemory()
+	return err
 }
 
 func (service *IndexService) Refresh(paths ...string) {

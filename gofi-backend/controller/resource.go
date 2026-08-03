@@ -7,6 +7,7 @@ import (
 	"gofi/application"
 	"gofi/i18n"
 	"gofi/middleware"
+	"gofi/tool"
 
 	"github.com/gin-gonic/gin"
 )
@@ -87,6 +88,11 @@ func WriteApplicationError(ctx *gin.Context, err error) {
 	case errors.Is(err, application.ErrInvalidInput):
 		Failure(ctx, http.StatusBadRequest, StatusInvalidRequest, i18n.T(ctx, "error.invalid_request"))
 	default:
+		tool.WithError(err).WithFields(map[string]interface{}{
+			"request_id": middleware.GetRequestID(ctx),
+			"method":     ctx.Request.Method,
+			"route":      ctx.FullPath(),
+		}).Error("应用请求处理失败")
 		Failure(ctx, http.StatusInternalServerError, StatusInternal, i18n.T(ctx, "error.internal"))
 	}
 }

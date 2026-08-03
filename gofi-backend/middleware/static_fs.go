@@ -27,10 +27,16 @@ func StaticFS(urlPrefix string, targetPath string, staticAssetsFS embed.FS) gin.
 			return
 		}
 		filePath := path.Join(".", c.Request.URL.Path)
-		_, err := distFS.Open(filePath)
+		staticFile, err := distFS.Open(filePath)
 
 		if err == nil {
-			addCacheHeaders(c)
+			info, statErr := staticFile.Stat()
+			_ = staticFile.Close()
+			if statErr != nil {
+				c.Next()
+				return
+			}
+			addCacheHeaders(c, info.IsDir())
 			fileServer.ServeHTTP(c.Writer, c.Request)
 			c.Abort()
 			return
@@ -40,30 +46,35 @@ func StaticFS(urlPrefix string, targetPath string, staticAssetsFS embed.FS) gin.
 }
 
 // addCacheHeaders 为静态文件添加缓存头
-func addCacheHeaders(c *gin.Context) {
-	path := c.Request.URL.Path
+func addCacheHeaders(c *gin.Context, servesDirectoryIndex bool) {
+	requestPath := c.Request.URL.Path
 
 	// 根据文件类型设置不同的缓存策略
 	switch {
-	case strings.HasSuffix(path, ".html"):
+	case servesDirectoryIndex || strings.HasSuffix(requestPath, ".html"):
 		// HTML 文件不缓存，确保内容更新
-		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
-		c.Header("Pragma", "no-cache")
-		c.Header("Expires", "0")
-	case strings.HasSuffix(path, ".js") || strings.HasSuffix(path, ".css"):
+		DisableClientCaching(c)
+	case strings.HasSuffix(requestPath, ".js") || strings.HasSuffix(requestPath, ".css"):
 		// JS/CSS 文件缓存 1 年，文件名通常包含 hash
 		c.Header("Cache-Control", "public, max-age=31536000, immutable")
-	case strings.HasSuffix(path, ".png") || strings.HasSuffix(path, ".jpg") ||
-		strings.HasSuffix(path, ".jpeg") || strings.HasSuffix(path, ".gif") ||
-		strings.HasSuffix(path, ".svg") || strings.HasSuffix(path, ".ico"):
+	case strings.HasSuffix(requestPath, ".png") || strings.HasSuffix(requestPath, ".jpg") ||
+		strings.HasSuffix(requestPath, ".jpeg") || strings.HasSuffix(requestPath, ".gif") ||
+		strings.HasSuffix(requestPath, ".svg") || strings.HasSuffix(requestPath, ".ico"):
 		// 图片文件缓存 1 个月
 		c.Header("Cache-Control", "public, max-age=2592000")
-	case strings.HasSuffix(path, ".woff") || strings.HasSuffix(path, ".woff2") ||
-		strings.HasSuffix(path, ".ttf") || strings.HasSuffix(path, ".eot"):
+	case strings.HasSuffix(requestPath, ".woff") || strings.HasSuffix(requestPath, ".woff2") ||
+		strings.HasSuffix(requestPath, ".ttf") || strings.HasSuffix(requestPath, ".eot"):
 		// 字体文件缓存 1 年
 		c.Header("Cache-Control", "public, max-age=31536000, immutable")
 	default:
 		// 其他文件缓存 1 小时
 		c.Header("Cache-Control", "public, max-age=3600")
 	}
+}
+
+// DisableClientCaching prevents browsers from retaining HTML entry points.
+func DisableClientCaching(c *gin.Context) {
+	c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+	c.Header("Pragma", "no-cache")
+	c.Header("Expires", "0")
 }

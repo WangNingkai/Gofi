@@ -8,6 +8,8 @@ import (
 	"xorm.io/xorm"
 )
 
+const fileIndexInsertBatchSize = 500
+
 type FileIndexRepository interface {
 	ReplaceAll(entries []db.FileIndex) error
 	ReplacePrefix(prefix string, entries []db.FileIndex) error
@@ -32,15 +34,9 @@ func (repository *fileIndexRepository) ReplaceAll(entries []db.FileIndex) error 
 		_ = session.Rollback()
 		return err
 	}
-	if len(entries) > 0 {
-		values := make([]interface{}, len(entries))
-		for index := range entries {
-			values[index] = &entries[index]
-		}
-		if _, err := session.Insert(values...); err != nil {
-			_ = session.Rollback()
-			return err
-		}
+	if err := insertFileIndexEntries(session, entries); err != nil {
+		_ = session.Rollback()
+		return err
 	}
 	return session.Commit()
 }
@@ -56,17 +52,25 @@ func (repository *fileIndexRepository) ReplacePrefix(prefix string, entries []db
 		_ = session.Rollback()
 		return err
 	}
-	if len(entries) > 0 {
-		values := make([]interface{}, len(entries))
-		for index := range entries {
-			values[index] = &entries[index]
+	if err := insertFileIndexEntries(session, entries); err != nil {
+		_ = session.Rollback()
+		return err
+	}
+	return session.Commit()
+}
+
+func insertFileIndexEntries(session *xorm.Session, entries []db.FileIndex) error {
+	for start := 0; start < len(entries); start += fileIndexInsertBatchSize {
+		end := min(start+fileIndexInsertBatchSize, len(entries))
+		values := make([]interface{}, end-start)
+		for index := start; index < end; index++ {
+			values[index-start] = &entries[index]
 		}
 		if _, err := session.Insert(values...); err != nil {
-			_ = session.Rollback()
 			return err
 		}
 	}
-	return session.Commit()
+	return nil
 }
 
 func (repository *fileIndexRepository) Search(query string, includeContent bool, limit int) ([]db.FileIndex, error) {

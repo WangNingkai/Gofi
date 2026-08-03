@@ -3,6 +3,7 @@ package db
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	_ "modernc.org/sqlite"
@@ -15,7 +16,7 @@ var engineMutex sync.RWMutex
 const sqliteDriverName = "sqlite"
 
 func Open(dataSourceName string, showSQL bool) error {
-	newEngine, err := xorm.NewEngine(sqliteDriverName, dataSourceName)
+	newEngine, err := xorm.NewEngine(sqliteDriverName, sqliteDataSourceName(dataSourceName))
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
@@ -42,6 +43,17 @@ func Open(dataSourceName string, showSQL bool) error {
 		return fmt.Errorf("seed guest permissions: %w", err)
 	}
 	return nil
+}
+
+func sqliteDataSourceName(dataSourceName string) string {
+	if dataSourceName == ":memory:" || strings.Contains(dataSourceName, "mode=memory") {
+		return dataSourceName
+	}
+	separator := "?"
+	if strings.Contains(dataSourceName, "?") {
+		separator = "&"
+	}
+	return dataSourceName + separator + "_busy_timeout=5000&_journal_mode=WAL"
 }
 
 func Migrate(target *xorm.Engine) error {
