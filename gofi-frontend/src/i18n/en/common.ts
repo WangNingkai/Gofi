@@ -50,10 +50,18 @@ export default {
     'common.action.refresh': 'Refresh',
     'common.action.search': 'Search',
     'common.action.filter': 'Filter',
+    'common.action.sort': 'Sort',
     'common.action.open': 'Open',
     'common.action.copy': 'Copy',
     'common.action.close': 'Close',
     'common.action.back-to-home': 'Back to Home',
+
+    // Sort
+    'common.sort.name': 'Name',
+    'common.sort.modified': 'Modified',
+    'common.sort.size': 'Size',
+    'common.sort.ascending': 'Ascending',
+    'common.sort.descending': 'Descending',
 
     // Common status
     'common.status.loading': 'Loading...',

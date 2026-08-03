@@ -5,6 +5,7 @@ export default {
     'pages.file-list.empty-folder.title': '当前文件夹为空',
     'pages.file-list.empty-folder.description': '上传一些文件开始使用',
     'pages.file-list.upload-files': '上传文件',
+    'pages.file-list.drop-to-upload': '释放文件以上传到当前目录',
     'pages.file-list.upload-failed': '上传失败',
     'pages.file-list.please-login-first': '请先登录后再上传文件',
     'pages.file-list.load-failed.title': '加载失败',

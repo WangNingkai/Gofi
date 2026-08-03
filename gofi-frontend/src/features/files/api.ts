@@ -62,9 +62,8 @@ export function uploadFiles(
     const suffix = overwrite ? '&overwrite=true' : ''
     return client.post(`upload?path=${encodedPath(directory)}${suffix}`, formData, {
         onUploadProgress: (event: AxiosProgressEvent) => {
-            if (files.length === 1) {
-                onProgress(files[0].name, Math.round((event.loaded / (event.total || 1)) * 100))
-            }
+            const progress = Math.round((event.loaded / (event.total || 1)) * 100)
+            files.forEach((file) => onProgress(file.name, progress))
         },
     })
 }

@@ -1,5 +1,8 @@
 import {
     AlertTriangle,
+    ArrowDownAZ,
+    ArrowDownWideNarrow,
+    ArrowUpDown,
     Calendar,
     ChevronLeft,
     ChevronRight,
@@ -21,7 +24,8 @@ import {
     Share,
     Trash2,
     Upload,
-    Filter
+    Filter,
+    X,
 } from 'lucide-react'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -85,7 +89,13 @@ import { searchFiles, type SearchResult } from '@/features/search/api'
 import { readSessionToken } from '@/features/auth/session'
 import { useAtom } from 'jotai'
 import { fileViewModeState } from '@/features/preferences/fileViewMode'
-import { fileTypeLabelKey, filterAndSortFiles, type FileTypeFilter } from '@/features/files/listModel'
+import {
+    fileTypeLabelKey,
+    filterAndSortFiles,
+    type FileSortKey,
+    type FileTypeFilter,
+    type SortDirection,
+} from '@/features/files/listModel'
 
 interface FilesProps {
     directoryData?: DirectoryData
@@ -101,6 +111,9 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
     const [searchQuery, setSearchQuery] = useState<string>('')
     const [viewMode, setViewMode] = useAtom(fileViewModeState)
     const [fileTypeFilter, setFileTypeFilter] = useState<FileTypeFilter>('all')
+    const [sortKey, setSortKey] = useState<FileSortKey>('name')
+    const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+    const [isDragActive, setIsDragActive] = useState(false)
     const { capabilities } = useAccessCapabilities()
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [deletingItem, setDeletingItem] = useState<FileInfo | null>(null)
@@ -143,6 +156,18 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
             searchInputRef.current.focus();
         }
     }, [searchOpen]);
+
+    useEffect(() => {
+        const handleShortcut = (event: KeyboardEvent) => {
+            if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+                event.preventDefault()
+                setSearchOpen(true)
+            }
+            if (event.key === 'Escape') setSearchOpen(false)
+        }
+        window.addEventListener('keydown', handleShortcut)
+        return () => window.removeEventListener('keydown', handleShortcut)
+    }, [])
 
     useEffect(() => {
         if (searchQuery.trim().length < 2) {
@@ -188,9 +213,17 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
 
     // 过滤文件列表
     const filteredFiles = useMemo(
-        () => filterAndSortFiles(fileInfos, searchQuery, fileTypeFilter),
-        [fileInfos, fileTypeFilter, searchQuery],
+        () => filterAndSortFiles(fileInfos, searchQuery, fileTypeFilter, sortKey, sortDirection),
+        [fileInfos, fileTypeFilter, searchQuery, sortDirection, sortKey],
     )
+
+    const toggleSort = (nextKey: FileSortKey) => {
+        if (sortKey === nextKey) setSortDirection((current) => current === 'asc' ? 'desc' : 'asc')
+        else {
+            setSortKey(nextKey)
+            setSortDirection('asc')
+        }
+    }
 
     // 跳转
     const onFileNameClick = (fileinfo: FileInfo) => {
@@ -327,13 +360,11 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
             files,
             onProgress
                 ? (fileNameOrProgress: any, progressOrTotal: any) => {
-                    if (files.length === 1) {
-                        if (typeof fileNameOrProgress === 'number' && typeof progressOrTotal === 'number') {
-                            const percent = Math.round((fileNameOrProgress / (progressOrTotal || 1)) * 100)
-                            onProgress(files[0].name, percent)
-                        } else {
-                            onProgress(fileNameOrProgress, progressOrTotal)
-                        }
+                    if (typeof fileNameOrProgress === 'number' && typeof progressOrTotal === 'number') {
+                        const percent = Math.round((fileNameOrProgress / (progressOrTotal || 1)) * 100)
+                        files.forEach((file) => onProgress(file.name, percent))
+                    } else {
+                        onProgress(fileNameOrProgress, progressOrTotal)
                     }
                 }
                 : undefined,
@@ -452,7 +483,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
         const breadcrumbs = generateBreadcrumbs()
         const MAX_BREADCRUMBS_TO_SHOW = 4;
         return (
-            <div className="flex items-center justify-between bg-background/95 backdrop-blur-sm border-b border-border p-2 rounded-t-lg mb-6">
+            <div className="sticky top-20 z-30 mb-6 space-y-2 rounded-xl border border-border bg-background/95 p-2 shadow-sm backdrop-blur">
                 {/* 左侧：Home、Back、面包屑 */}
                 <div className="flex items-center space-x-2 min-w-0">
                     <TooltipProvider>
@@ -498,12 +529,13 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                            <span
-                                                className="px-1.5 py-1 rounded-md hover:bg-muted cursor-pointer truncate"
+                                            <button
+                                                type="button"
+                                                className="px-1.5 py-1 rounded-md hover:bg-muted truncate"
                                                 onClick={() => navigateToBreadcrumb(breadcrumbs[0].path)}
                                             >
                                                 {breadcrumbs[0].name}
-                                            </span>
+                                            </button>
                                         </TooltipTrigger>
                                         <TooltipContent>
                                             <p>{breadcrumbs[0].name}</p>
@@ -532,12 +564,19 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                          <TooltipProvider>
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
-                                                    <span
-                                                        className={`px-1.5 py-1 rounded-md truncate ${index === 1 ? 'text-foreground font-semibold' : 'hover:bg-muted cursor-pointer'}`}
-                                                        onClick={() => navigateToBreadcrumb(crumb.path)}
-                                                    >
-                                                        {crumb.name}
-                                                    </span>
+                                                    {index === 1 ? (
+                                                        <span className="px-1.5 py-1 font-semibold text-foreground" aria-current="page">
+                                                            {crumb.name}
+                                                        </span>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            className="px-1.5 py-1 rounded-md truncate hover:bg-muted"
+                                                            onClick={() => navigateToBreadcrumb(crumb.path)}
+                                                        >
+                                                            {crumb.name}
+                                                        </button>
+                                                    )}
                                                 </TooltipTrigger>
                                                 <TooltipContent>
                                                     <p>{crumb.name}</p>
@@ -555,12 +594,19 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                     <TooltipProvider>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
-                                                <span
-                                                    className={`px-1.5 py-1 rounded-md truncate ${index === breadcrumbs.length - 1 ? 'text-foreground font-semibold' : 'hover:bg-muted cursor-pointer'}`}
-                                                    onClick={() => navigateToBreadcrumb(crumb.path)}
-                                                >
-                                                    {crumb.name}
-                                                </span>
+                                                {index === breadcrumbs.length - 1 ? (
+                                                    <span className="px-1.5 py-1 font-semibold text-foreground" aria-current="page">
+                                                        {crumb.name}
+                                                    </span>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        className="px-1.5 py-1 rounded-md truncate hover:bg-muted"
+                                                        onClick={() => navigateToBreadcrumb(crumb.path)}
+                                                    >
+                                                        {crumb.name}
+                                                    </button>
+                                                )}
                                             </TooltipTrigger>
                                             <TooltipContent>
                                                 <p>{crumb.name}</p>
@@ -575,8 +621,8 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                 </div>
 
                 {/* 第二行：搜索、过滤、操作按钮 */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-2">
+                    <div className="flex flex-wrap items-center gap-1">
                         {selectedPaths.size > 0 && capabilities.remove && (
                             <Button
                                 variant="ghost"
@@ -604,7 +650,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                             </Button>
                             {searchOpen && (
                                 <div
-                                    className="absolute left-0 top-10 z-50 w-64 bg-popover border border-border rounded-lg shadow-lg p-2 animate-in fade-in"
+                                    className="absolute left-0 top-10 z-50 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-border bg-popover p-2 shadow-lg animate-in fade-in"
                                     onBlur={e => {
                                         // 失焦时收起（但点击输入框本身不收起）
                                         if (!e.currentTarget.contains(e.relatedTarget as Node)) {
@@ -613,14 +659,26 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                     }}
                                     tabIndex={-1}
                                 >
-                                    <Input
-                                        ref={searchInputRef}
-                                        placeholder={t('form.search.placeholder')}
-                                        value={searchQuery}
-                                        onChange={e => setSearchQuery(e.target.value)}
-                                        onBlur={() => setSearchOpen(false)}
-                                        className="h-9 text-sm rounded-md"
-                                    />
+                                    <div className="flex items-center gap-1">
+                                        <Input
+                                            ref={searchInputRef}
+                                            placeholder={t('form.search.placeholder')}
+                                            value={searchQuery}
+                                            onChange={e => setSearchQuery(e.target.value)}
+                                            className="h-9 rounded-md text-sm"
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-9 w-9 shrink-0"
+                                            aria-label={t('common.close')}
+                                            onMouseDown={(event) => event.preventDefault()}
+                                            onClick={() => setSearchOpen(false)}
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                     {indexedResults.length > 0 && (
                                         <div className="mt-2 max-h-64 overflow-y-auto border-t pt-1">
                                             {indexedResults.slice(0, 10).map((result) => (
@@ -688,17 +746,43 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 p-0" aria-label={t('common.action.sort')}>
+                                    {sortDirection === 'asc'
+                                        ? <ArrowDownAZ className="h-4 w-4" />
+                                        : <ArrowDownWideNarrow className="h-4 w-4" />}
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                                {(['name', 'modified', 'size'] as FileSortKey[]).map((key) => (
+                                    <DropdownMenuItem
+                                        key={key}
+                                        onClick={() => toggleSort(key)}
+                                        className={sortKey === key ? 'bg-accent text-accent-foreground' : ''}
+                                    >
+                                        <ArrowUpDown className="mr-2 h-4 w-4" />
+                                        <span className="flex-1">{t(`common.sort.${key}`)}</span>
+                                        {sortKey === key && (
+                                            <span className="ml-4 text-xs text-muted-foreground">
+                                                {t(`common.sort.${sortDirection === 'asc' ? 'ascending' : 'descending'}`)}
+                                            </span>
+                                        )}
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
 
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-1">
                         {/* 上传文件按钮 */}
                         {capabilities.upload && (
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button onClick={() => openOperation('mkdir')} variant="ghost" size="icon" className="h-8 w-8 p-0">
+                                        <Button onClick={() => openOperation('mkdir')} variant="ghost" size="sm" className="h-8 gap-2 px-2">
                                             <FolderPlus className="h-4 w-4" />
-                                            <span className="sr-only">{t('pages.file-list.new-folder')}</span>
+                                            <span className="hidden lg:inline">{t('pages.file-list.new-folder')}</span>
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent><p>{t('pages.file-list.new-folder')}</p></TooltipContent>
@@ -714,9 +798,9 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                             return
                                         }
                                         uploadRef.current?.click()
-                                    }} variant="ghost" size="icon" className="h-8 w-8 p-0">
+                                    }} variant="default" size="sm" className="h-8 gap-2 px-2">
                                         <Upload className="h-4 w-4" />
-                                        <span className="sr-only">{t('tooltip.upload')}</span>
+                                        <span className="hidden lg:inline">{t('tooltip.upload')}</span>
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
@@ -770,7 +854,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                         {EnvUtil.isPreviewMode && (
                             <>
                                 <Separator orientation="vertical" className="h-6" />
-                                <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-md">
+                                <div className="hidden items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 sm:flex">
                                     <AlertTriangle className="h-4 w-4 text-amber-600" />
                                     <span className="text-xs text-amber-800 font-medium">{t('common.demo-mode')}</span>
                                 </div>
@@ -802,7 +886,13 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                 <Alert variant="destructive" className="my-8">
                     <AlertTitle>{t('pages.file-list.load-failed.title')}</AlertTitle>
                     <AlertDescription>
-                        {t('pages.file-list.load-failed.message')}
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            {t('pages.file-list.load-failed.message')}
+                            <Button variant="outline" size="sm" onClick={() => void mutate()}>
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                {t('common.retry')}
+                            </Button>
+                        </div>
                     </AlertDescription>
                 </Alert>
             )
@@ -840,8 +930,8 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
         return (
             <div className="space-y-4">
                 {/* 统计信息 */}
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <div className="flex items-center space-x-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-2">
                         <span>{t('common.total-items', { count: filesToShow.length })}</span>
                         {(searchQuery || fileTypeFilter !== 'all') && (
                             <span className="text-primary flex items-center space-x-1">
@@ -888,6 +978,17 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                             <div
                                 key={item.path}
                                 onClick={() => onFileNameClick(item)}
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Enter' || event.key === ' ') {
+                                        event.preventDefault()
+                                        onFileNameClick(item)
+                                    }
+                                }}
+                                role="button"
+                                tabIndex={0}
+                                aria-label={item.isDirectory
+                                    ? `${t('common.file-type.folder')}: ${item.name}`
+                                    : `${t('common.file-type.file')}: ${item.name}`}
                                 className="group relative bg-card border border-border rounded-lg p-4 hover:border-primary/50 hover:shadow-md transition-all cursor-pointer"
                             >
                                 {(capabilities.upload || capabilities.remove) && (
@@ -908,7 +1009,13 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                     <div className="flex items-center space-x-1">
                                         {(capabilities.download || capabilities.remove || capabilities.upload) && <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 w-8 p-0"
+                                                    aria-label={`${t('common.actions')}: ${item.name}`}
+                                                    onClick={(event) => event.stopPropagation()}
+                                                >
                                                     <MoreVertical className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
@@ -981,13 +1088,13 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                             <table className="w-full">
                                 <thead className="bg-muted/50">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                                        <th className="hidden px-4 py-3 text-left text-sm font-medium text-muted-foreground sm:table-cell">
                                             {t('common.file-name')}
                                         </th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                                        <th className="hidden px-4 py-3 text-left text-sm font-medium text-muted-foreground md:table-cell">
                                             {t('common.type')}
                                         </th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                                        <th className="hidden px-4 py-3 text-left text-sm font-medium text-muted-foreground lg:table-cell">
                                             {t('common.file-size')}
                                         </th>
                                         <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
@@ -1005,10 +1112,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                             className="hover:bg-muted/50 transition-colors"
                                         >
                                             <td className="px-4 py-3">
-                                                <div 
-                                                    className="flex items-center space-x-3 cursor-pointer"
-                                                    onClick={() => onFileNameClick(item)}
-                                                >
+                                                <div className="flex items-center space-x-3">
                                                     {(capabilities.upload || capabilities.remove) && (
                                                         <Checkbox
                                                             checked={selectedPaths.has(item.path)}
@@ -1016,28 +1120,39 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
                                                             onClick={(event) => event.stopPropagation()}
                                                         />
                                                     )}
-                                                    {getFileIcon(item)}
-                                                    <span className="font-medium text-foreground truncate max-w-[300px]">
-                                                        {item.name}
-                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => onFileNameClick(item)}
+                                                        className="flex min-w-0 items-center gap-3 rounded text-left hover:text-primary"
+                                                    >
+                                                        {getFileIcon(item)}
+                                                        <span className="max-w-[12rem] truncate font-medium text-foreground sm:max-w-[18rem]">
+                                                            {item.name}
+                                                        </span>
+                                                    </button>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3">
+                                            <td className="hidden px-4 py-3 sm:table-cell">
                                                 <Badge variant={item.isDirectory ? "default" : "secondary"}>
                                                     {getFileTypeLabel(item)}
                                                 </Badge>
                                             </td>
-                                            <td className="px-4 py-3 text-sm text-muted-foreground">
+                                            <td className="hidden px-4 py-3 text-sm text-muted-foreground md:table-cell">
                                                 {item.isDirectory ? '--' : FormatUtil.formatBytes(item.size)}
                                             </td>
-                                            <td className="px-4 py-3 text-sm text-muted-foreground">
+                                            <td className="hidden px-4 py-3 text-sm text-muted-foreground lg:table-cell">
                                                 {FormatUtil.formatTime(item.lastModified * 1000)}
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center space-x-1">
                                                     {(capabilities.download || capabilities.remove || capabilities.upload) && <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-8 w-8 p-0"
+                                                                aria-label={`${t('common.actions')}: ${item.name}`}
+                                                            >
                                                                 <MoreVertical className="h-4 w-4" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
@@ -1095,7 +1210,39 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
     return (
         <>
             <MainLayout>
-                <div className="space-y-6">
+                <div
+                    className="relative space-y-6"
+                    onDragOver={(event) => {
+                        if (!capabilities.upload) return
+                        event.preventDefault()
+                        event.dataTransfer.dropEffect = 'copy'
+                        setIsDragActive(true)
+                    }}
+                    onDragLeave={(event) => {
+                        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                            setIsDragActive(false)
+                        }
+                    }}
+                    onDrop={(event) => {
+                        event.preventDefault()
+                        setIsDragActive(false)
+                        if (!capabilities.upload) {
+                            Toast.e(t('pages.exception.403.description'))
+                            return
+                        }
+                        const files = Array.from(event.dataTransfer.files)
+                        if (files.length > 0) void onUploadFiles(files)
+                    }}
+                >
+                    {isDragActive && (
+                        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-6 backdrop-blur-sm">
+                            <div className="flex max-w-sm flex-col items-center rounded-2xl border-2 border-dashed border-primary bg-card p-10 text-center shadow-xl">
+                                <Upload className="mb-4 h-10 w-10 text-primary" />
+                                <p className="font-semibold">{t('pages.file-list.drop-to-upload')}</p>
+                                <p className="mt-1 text-sm text-muted-foreground">{currentPath}</p>
+                            </div>
+                        </div>
+                    )}
                     {/* 页面标题 */}
                     <PageHeader
                         icon={<FolderOpen className="h-6 w-6 text-primary" />}

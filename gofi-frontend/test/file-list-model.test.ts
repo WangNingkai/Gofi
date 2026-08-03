@@ -38,4 +38,14 @@ describe('file list model', () => {
         ], '', 'all')
         expect(all.map((entry) => entry.name)).toEqual(['folder', 'file2.txt', 'file10.txt'])
     })
+
+    it('sorts by size or modified time while keeping folders first', () => {
+        const older = { ...file('older.txt'), size: 20, lastModified: 1 }
+        const newer = { ...file('newer.txt'), size: 10, lastModified: 2 }
+        const folder = file('folder', 'folder', true)
+        expect(filterAndSortFiles([older, newer, folder], '', 'all', 'size', 'asc').map((entry) => entry.name))
+            .toEqual(['folder', 'newer.txt', 'older.txt'])
+        expect(filterAndSortFiles([older, newer, folder], '', 'all', 'modified', 'desc').map((entry) => entry.name))
+            .toEqual(['folder', 'newer.txt', 'older.txt'])
+    })
 })

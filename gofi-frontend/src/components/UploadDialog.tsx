@@ -64,7 +64,10 @@ export const UploadDialog: React.FC<UploadDialogProps> = ({
     }, [files.length, open, startUpload])
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={(nextOpen) => {
+            if (!nextOpen && isUploading) return
+            onOpenChange(nextOpen)
+        }}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <div className="flex items-center space-x-3">

@@ -50,10 +50,18 @@ export default {
     'common.action.refresh': '刷新',
     'common.action.search': '搜索',
     'common.action.filter': '过滤',
+    'common.action.sort': '排序',
     'common.action.open': '打开',
     'common.action.copy': '复制',
     'common.action.close': '关闭',
     'common.action.back-to-home': '返回首页',
+
+    // 排序
+    'common.sort.name': '名称',
+    'common.sort.modified': '修改时间',
+    'common.sort.size': '大小',
+    'common.sort.ascending': '升序',
+    'common.sort.descending': '降序',
 
     // 通用状态
     'common.status.loading': '加载中...',

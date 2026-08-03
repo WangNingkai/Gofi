@@ -5,6 +5,7 @@ export default {
     'pages.file-list.empty-folder.title': 'This folder is empty',
     'pages.file-list.empty-folder.description': 'Upload some files to get started',
     'pages.file-list.upload-files': 'Upload Files',
+    'pages.file-list.drop-to-upload': 'Drop files to upload to this folder',
     'pages.file-list.upload-failed': 'Upload failed',
     'pages.file-list.please-login-first': 'Please login first to upload files',
     'pages.file-list.load-failed.title': 'Load Failed',
