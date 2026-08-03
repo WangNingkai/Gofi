@@ -1,0 +1,254 @@
+---
+name: gofi-conventions
+description: Development conventions and patterns for Gofi. TypeScript project with conventional commits.
+---
+
+# Gofi Conventions
+
+> Generated from [WangNingkai/Gofi](https://github.com/WangNingkai/Gofi) on 2026-08-03
+
+## Overview
+
+This skill teaches Claude the development patterns and conventions used in Gofi.
+
+## Tech Stack
+
+- **Primary Language**: TypeScript
+- **Architecture**: type-based module organization
+- **Test Location**: mixed
+- **Test Framework**: vitest
+
+## When to Use This Skill
+
+Activate this skill when:
+- Making changes to this repository
+- Adding new features following established patterns
+- Writing tests that match project conventions
+- Creating commits with proper message format
+
+## Commit Conventions
+
+Follow these commit message conventions based on 71 analyzed commits.
+
+### Commit Style: Conventional Commits
+
+### Prefixes Used
+
+- `refactor`
+- `fix`
+- `chore`
+- `feat`
+- `perf`
+
+### Message Guidelines
+
+- Average message length: ~39 characters
+- Keep first line concise and descriptive
+- Use imperative mood ("Add feature" not "Added feature")
+
+
+*Commit message example*
+
+```text
+chore: update github action workflow
+```
+
+*Commit message example*
+
+```text
+refactor: gofi use react+tsx+tailwindcss
+```
+
+*Commit message example*
+
+```text
+doc: update readme
+```
+
+*Commit message example*
+
+```text
+fix: the bug of not being able to specify ip and port parameters
+```
+
+*Commit message example*
+
+```text
+style: prettier format
+```
+
+*Commit message example*
+
+```text
+chore: release v1.0.0-beta.1
+```
+
+*Commit message example*
+
+```text
+chore: update release workflow of github action
+```
+
+*Commit message example*
+
+```text
+chore: release v1.0.0-beta.2
+```
+
+## Architecture
+
+### Project Structure: Single Package
+
+This project uses **type-based** module organization.
+
+### Configuration Files
+
+- `.github/workflows/ci.yml`
+- `.github/workflows/prebuild.yml`
+- `.github/workflows/release.yml`
+- `.github/workflows/test.yml`
+- `Dockerfile`
+- `gofi-frontend/.eslintrc.js`
+- `gofi-frontend/.prettierrc`
+- `gofi-frontend/jest.config.js`
+- `gofi-frontend/package.json`
+- `package.json`
+- `gofi-frontend/vite.config.ts`
+- `gofi-frontend/tsconfig.json`
+- `gofi-frontend/tailwind.config.js`
+- `gofi-frontend/vitest.config.ts`
+
+### Guidelines
+
+- Group code by type (components, services, utils)
+- Keep related functionality in the same type folder
+- Avoid circular dependencies between type folders
+
+## Code Style
+
+### Language: TypeScript
+
+### Naming Conventions
+
+| Element | Convention |
+|---------|------------|
+| Files | camelCase |
+| Functions | camelCase |
+| Classes | PascalCase |
+| Constants | SCREAMING_SNAKE_CASE |
+
+### Import Style: Mixed Style
+
+### Export Style: Default Exports
+
+
+*Preferred export style*
+
+```typescript
+// Use default exports for main component/function
+export default function UserProfile() { ... }
+```
+
+## Testing
+
+### Test Framework: vitest
+
+### File Pattern: `*.test.ts`
+
+### Test Types
+
+- **Unit tests**: Test individual functions and components in isolation
+- **Integration tests**: Test interactions between multiple components/services
+
+### Mocking: vi.mock
+
+### Coverage
+
+This project has coverage reporting configured. Aim for 80%+ coverage.
+
+
+*Test file structure*
+
+```typescript
+import { describe, it, expect } from 'vitest'
+
+describe('MyFunction', () => {
+  it('should return expected result', () => {
+    const result = myFunction(input)
+    expect(result).toBe(expected)
+  })
+})
+```
+
+## Common Workflows
+
+These workflows were detected from analyzing commit patterns.
+
+### Feature Development
+
+Standard feature implementation workflow
+
+**Frequency**: ~3 times per month
+
+**Steps**:
+1. Add feature implementation
+2. Add tests for feature
+3. Update documentation
+
+**Files typically involved**:
+- `gofi-frontend/src/api/*`
+- `gofi-frontend/src/i18n/*`
+- `gofi-frontend/src/i18n/en/*`
+- `**/*.test.*`
+- `**/api/**`
+
+**Example commit sequence**:
+```
+feat: support changing storage path
+chore: upload artifact after build successed
+refactor: additional text translation of the login page
+```
+
+### Refactoring
+
+Code refactoring and cleanup workflow
+
+**Frequency**: ~16 times per month
+
+**Steps**:
+1. Ensure tests pass before refactor
+2. Refactor code structure
+3. Verify tests still pass
+
+**Files typically involved**:
+- `src/**/*`
+
+**Example commit sequence**:
+```
+refactor: gofi use react+tsx+tailwindcss
+chore: release v1.0.0-beta.1
+doc: update readme
+```
+
+
+## Best Practices
+
+Based on analysis of the codebase, follow these practices:
+
+### Do
+
+- Use conventional commit format (feat:, fix:, etc.)
+- Write tests using vitest
+- Follow *.test.ts naming pattern
+- Use camelCase for file names
+- Prefer default exports
+
+### Don't
+
+- Don't write vague commit messages
+- Don't skip tests for new features
+- Don't deviate from established patterns without discussion
+
+---
+
+*This skill was auto-generated by [ECC Tools](https://ecc.tools). Review and customize as needed for your team.*
