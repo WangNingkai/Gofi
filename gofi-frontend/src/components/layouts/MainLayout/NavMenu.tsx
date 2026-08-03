@@ -17,10 +17,13 @@ const moreItems = [
   { key: 'stars', icon: <RiGithubFill size={20} className="mr-2" />, label: 'menu.stars', href: 'https://github.com/Sloaix/Gofi', show: EnvUtil.isPreviewMode },
 ]
 
+export const isNavLinkActive = (pathname: string, link: string) =>
+  pathname === link || pathname.startsWith(`${link}/`)
+
 const NavMenu: React.FC = () => {
   const location = useLocation()
   const { t } = useTranslation()
-  const isActive = (link: string) => location.pathname === link
+  const isActive = (link: string) => isNavLinkActive(location.pathname, link)
 
   return (
     <nav className="flex h-full items-center gap-2 px-2">
@@ -36,6 +39,7 @@ const NavMenu: React.FC = () => {
           <Link
             key={item.key}
             to={item.to}
+            aria-current={active ? 'page' : undefined}
             className={classNames(
               'flex items-center gap-2 px-3 py-2 rounded-md transition-colors',
               active

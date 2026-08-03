@@ -324,7 +324,7 @@ const Files: React.FC<FilesProps> = ({ directoryData }) => {
     const handleUpload = async (files: File[], onProgress?: (fileName: string, progress: number) => void, overwrite = false) => {
         try {
             await uploadFilesRequest(currentPath, files, onProgress || (() => {}), overwrite)
-            mutate()
+            await mutate()
         } catch (e: any) {
             throw new Error(e?.message || t('pages.file-list.upload-failed'))
         }

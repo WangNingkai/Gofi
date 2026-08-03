@@ -40,6 +40,14 @@ export function getFilePreviewUrl(path: string): string {
     return `${BASE_URL}download?path=${encodedPath(path)}&raw=true`
 }
 
+export function getFilePathFromUrl(url: string): string | null {
+    try {
+        return new URL(url, window.location.origin).searchParams.get('path')
+    } catch {
+        return null
+    }
+}
+
 export function uploadFiles(
     directory: string,
     files: File[],

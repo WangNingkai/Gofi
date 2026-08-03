@@ -3,7 +3,7 @@ import React, { lazy, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 import useSWR from 'swr'
-import { fetchFile, getFileDownloadUrl, getFilePreviewUrl } from '@/features/files/api'
+import { fetchFile, getFileDownloadUrl, getFilePathFromUrl, getFilePreviewUrl } from '@/features/files/api'
 import type { DirectoryData, FileData, FileInfo } from '@/features/files/types'
 import FileIconComponent from '../../components/FileIcon'
 import LogoLoading from '../../components/LogoLoading'
@@ -158,8 +158,7 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                 setPreviewUrl(stateData.imageList[stateData.currentIndex])
 
                 // 从预览URL中提取文件路径并更新下载URL
-                const url = new URL(stateData.imageList[stateData.currentIndex])
-                const pathParam = url.searchParams.get('path')
+                const pathParam = getFilePathFromUrl(stateData.imageList[stateData.currentIndex])
                 if (pathParam) {
                     setDownloadUrl(getFileDownloadUrl(pathParam))
                 }
@@ -193,8 +192,7 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                 setPreviewUrl(imageUrls[finalIndex])
 
                 // 从预览URL中提取文件路径并更新下载URL
-                const url = new URL(imageUrls[finalIndex])
-                const pathParam = url.searchParams.get('path')
+                const pathParam = getFilePathFromUrl(imageUrls[finalIndex])
                 if (pathParam) {
                     setDownloadUrl(getFileDownloadUrl(pathParam))
                 }
@@ -260,8 +258,7 @@ const File: React.FC<FileProps> = ({ fileData }) => {
                 setPreviewUrl(imageList[newIndex])
 
                 // 从预览URL中提取文件路径并更新下载URL
-                const url = new URL(imageList[newIndex])
-                const pathParam = url.searchParams.get('path')
+                const pathParam = getFilePathFromUrl(imageList[newIndex])
                 if (pathParam) {
                     setDownloadUrl(getFileDownloadUrl(pathParam))
                 }

@@ -5,7 +5,7 @@ import type { DirectoryData } from './types'
 
 export function useDirectory(path: string, initial?: DirectoryData) {
     const result = useSWR(
-        initial || !path ? null : [QueryKey.FILE_LIST, path],
+        !path ? null : [QueryKey.FILE_LIST, path],
         async ([, directoryPath]) => {
             const response = await fetchFile(directoryPath)
             if (response.type !== 'directory') {
@@ -13,12 +13,16 @@ export function useDirectory(path: string, initial?: DirectoryData) {
             }
             return response.data as DirectoryData
         },
+        {
+            fallbackData: initial,
+            revalidateOnMount: !initial,
+        },
     )
 
     return {
-        files: initial?.files ?? result.data?.files,
+        files: result.data?.files,
         error: result.error,
-        isLoading: !initial && result.isLoading,
+        isLoading: result.isLoading,
         isValidating: result.isValidating,
         refresh: result.mutate,
     }
